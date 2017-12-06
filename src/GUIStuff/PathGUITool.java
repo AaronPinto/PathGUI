@@ -547,8 +547,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		return temp;
 	}
 
-	private void updatePath() {
-		selectedPath = new MPGen2D(mergeArrays(xDragInputs, yDragInputs), 3.0, 0.02, 3.867227572441874);
+	private void updatePath(ArrayList<Double> x, ArrayList<Double> y) {
+		selectedPath = new MPGen2D(mergeArrays(x, y), 3.0, 0.02, 3.867227572441874);
 		selectedPath.calculate();
 		fig.addData(selectedPath.smoothPath, Color.green, Color.green);
 		fig.repaint();
@@ -615,7 +615,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 					xInputs.remove(xInputs.size() - 1);
 					yInputs.remove(yInputs.size() - 1);
 					link.removeLast();
-					updatePath();
+					updatePath(xInputs, yInputs);
 				} else {
 					JOptionPane.showConfirmDialog(e.getComponent(), "No More Undos!", "", JOptionPane.DEFAULT_OPTION);
 					fig.repaint();
@@ -627,7 +627,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 					yInputs.add(yInputsBuffer.get(yInputsBuffer.size() - undoRedoCounter));
 					if(!link.isEmpty())
 						link.removeLast();
-					updatePath();
+					updatePath(xInputs, yInputs);
 					undoRedoCounter--;
 				} else {
 					JOptionPane.showConfirmDialog(e.getComponent(), "No More Redos!", "", JOptionPane.DEFAULT_OPTION);
@@ -659,7 +659,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			}
 			if(e.isControlDown() && (e.getExtendedKeyCode() == 68)) {
 				drag = !drag;
-				JOptionPane.showMessageDialog(e.getComponent(), String.format("Drag mode set to %b", drag), "Drag Mode Status", JOptionPane.INFORMATION_MESSAGE);
+				JOptionPane.showMessageDialog(e.getComponent(), String.format("Drag mode set to %b", drag), "Drag Mode Status",
+						JOptionPane.INFORMATION_MESSAGE);
 			}
 		}
 	}
@@ -677,6 +678,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				double y = (constrainTo(((height - 30) - p.getY()), rect.getHeight())) / yScale;
 				xDragInputs.add(x);
 				yDragInputs.add(y);
+				updatePath(xDragInputs, yDragInputs);
 				System.out.println("(" + x + ", " + y + ") " + xScale + " " + yScale + " " + g.getRootPane().getMousePosition());
 			}
 		}
@@ -689,7 +691,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			xInputs.add(xField);
 			yInputs.add(yField);
 			if(!link.isEmpty()) link.removeLast();
-			updatePath();
+			updatePath(xInputs, yInputs);
 			//Every time a new point is added, clear the undo/redo buffers and re-add all the points in the current path to them
 			undoRedoCounter = 0;
 			xInputsBuffer.clear();
