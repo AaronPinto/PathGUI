@@ -26,7 +26,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	private JFrame g = new JFrame("Path GUI Tool");
 	private int undoRedoCounter = 0;
 	private boolean draw;
-	private double upperXtic = 54.33333, upperYtic = 27, height, xScale, yScale,
+	private double upperXtic, upperYtic, height, xScale, yScale,
 			yTickYMax = 0, yTickYMin = 0, x1vert = 0;
 	private Rectangle rect;
 	private ArrayList<Double> xInputs = new ArrayList<>(), yInputs = new ArrayList<>(),
@@ -38,7 +38,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	 *
 	 * @param d is the boolean that handles if the GUI is in mouse-draw mode or not.
 	 */
-	public PathGUITool(boolean d) {
+	private PathGUITool(boolean d) {
 		upperXtic = -Double.MAX_VALUE;
 		upperYtic = -Double.MAX_VALUE;
 		draw = d;
@@ -60,6 +60,30 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 
 	private static double constrainTo(double value, double maxConstrain) {
 		return Math.max(0.0, Math.min(maxConstrain, value));
+	}
+
+	private static ArrayList<Double> getXVector(double[][] arr) {
+		ArrayList<Double> temp = new ArrayList<>();
+		double[] xVals = Arrays.stream(arr).mapToDouble(doubles -> doubles[0]).toArray();
+		IntStream.range(0, xVals.length).forEach(i -> temp.add(i, xVals[i]));
+		return temp;
+	}
+
+	private static ArrayList<Double> getYVector(double[][] arr) {
+		ArrayList<Double> temp = new ArrayList<>();
+		double[] xVals = Arrays.stream(arr).mapToDouble(doubles -> doubles[1]).toArray();
+		IntStream.range(0, xVals.length).forEach(i -> temp.add(i, xVals[i]));
+		return temp;
+	}
+
+	private static void removeLast(LinkedHashMap<ArrayList<Double>, ArrayList<Double>> dank) {
+		ArrayList<Double> keyOfLast = null;
+		for(Entry<ArrayList<Double>, ArrayList<Double>> entry : dank.entrySet()) keyOfLast = entry.getKey();
+		dank.remove(keyOfLast);
+	}
+
+	public static void main(String[] args) {
+		fig = new PathGUITool(true);
 	}
 
 	/**
@@ -356,26 +380,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		//until this method is called.
 	}
 
-	private static ArrayList<Double> getXVector(double[][] arr) {
-		ArrayList<Double> temp = new ArrayList<>();
-		double[] xVals = Arrays.stream(arr).mapToDouble(doubles -> doubles[0]).toArray();
-		IntStream.range(0, xVals.length).forEach(i -> temp.add(i, xVals[i]));
-		return temp;
-	}
-
-	private static ArrayList<Double> getYVector(double[][] arr) {
-		ArrayList<Double> temp = new ArrayList<>();
-		double[] xVals = Arrays.stream(arr).mapToDouble(doubles -> doubles[1]).toArray();
-		IntStream.range(0, xVals.length).forEach(i -> temp.add(i, xVals[i]));
-		return temp;
-	}
-
-	private static void removeLast(LinkedHashMap<ArrayList<Double>, ArrayList<Double>> dank) {
-		ArrayList<Double> keyOfLast = null;
-		for(Entry<ArrayList<Double>, ArrayList<Double>> entry : dank.entrySet()) keyOfLast = entry.getKey();
-		dank.remove(keyOfLast);
-	}
-
 	private double[][] mergeArrays(ArrayList<Double> x, ArrayList<Double> y) {
 		double[][] temp = new double[x.size()][2];
 		IntStream.range(0, x.size()).forEach(i -> {
@@ -383,6 +387,20 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			temp[i][1] = y.get(i);
 		});
 		return temp;
+	}
+
+	private String output2DArray() {
+		StringBuilder output = new StringBuilder();
+		int counter = 1;
+		for(Entry<ArrayList<Double>, ArrayList<Double>> entry : paths.entrySet()) {
+			output.append(String.format("public static double[][] path%d = new double[][]{", counter));
+			output.append(IntStream.range(0, entry.getValue().size()).mapToObj(i -> "{" + (entry.getKey().get(i) - entry.getKey().get(0))
+					+ ", " + (entry.getValue().get(i) - entry.getValue().get(0)) + "},\n").collect(Collectors
+					.joining("", "", "};\n")));
+			counter++;
+		}
+		System.out.println(output);
+		return output.toString();
 	}
 
 	private void updatePath(ArrayList<Double> x, ArrayList<Double> y) {
@@ -405,18 +423,11 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 						jfc.setFileFilter(new FileNameExtensionFilter("Text Files", "txt", "text"));
 						jfc.setSelectedFile(new File(String.format("%tB%te%tY-%tl%tM%tS%tp.txt", c, c, c, c, c, c, c)));
 						if(jfc.showSaveDialog(e.getComponent()) == JFileChooser.APPROVE_OPTION) {
-							if(!jfc.getSelectedFile().getAbsolutePath().endsWith(".txt") || !jfc.getSelectedFile().getAbsolutePath().endsWith(".TXT"))
+							if(!jfc.getSelectedFile().getAbsolutePath().endsWith(".txt") && !jfc.getSelectedFile().getAbsolutePath().endsWith(".TXT"))
 								jfc.setSelectedFile(new File(jfc.getSelectedFile().getAbsolutePath() + ".txt"));
 							FileWriter fw = new FileWriter(jfc.getSelectedFile().getAbsolutePath());
-							if(xInputs.size() != 0) paths.put(new ArrayList<>(xInputs), new ArrayList<>(yInputs));
-							StringBuilder output = new StringBuilder();
-							paths.forEach((key, value) -> {
-								IntStream.range(0, value.size()).forEach(i -> output.append("{").append(key.get(i)).append(", ")
-										.append(value.get(i)).append("},\n"));
-								output.append("\n");
-							});
-							System.out.println(output);
-							fw.write(output.toString());
+							if(xInputs.size() != 0) updatePath(new ArrayList<>(xInputs), new ArrayList<>(yInputs));
+							fw.write(output2DArray());
 							fw.flush();
 							fw.close();
 							JOptionPane.showConfirmDialog(e.getComponent(), "Points Saved Successfully!", "Points Saver",
@@ -459,20 +470,14 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				}
 			}
 			if(e.isControlDown() && (e.getExtendedKeyCode() == 67)) {//CTRL + C, Keycode for S = 83
-				StringBuilder output = new StringBuilder();
-				if(xInputs.size() != 0) paths.put(new ArrayList<>(xInputs), new ArrayList<>(yInputs));
-				for(Entry<ArrayList<Double>, ArrayList<Double>> entry : paths.entrySet())
-					output.append(IntStream.range(0, entry.getValue().size()).mapToObj(i -> "{" + (entry.getKey().get(i) - entry.getKey().get(0))
-							+ ", " + (entry.getValue().get(i) - entry.getValue().get(0)) + "},\n").collect(Collectors
-							.joining("", "", "\n")));
-				System.out.println(output);
+				if(xInputs.size() != 0) updatePath(new ArrayList<>(xInputs), new ArrayList<>(yInputs));
+//				paths.put(new ArrayList<>(), new ArrayList<>());//Put a dummy entry in to protect the original path
 				Clipboard c = Toolkit.getDefaultToolkit().getSystemClipboard();
-				c.setContents(new StringSelection(output.toString()), fig);
+				c.setContents(new StringSelection(output2DArray()), fig);
 				JOptionPane.showConfirmDialog(e.getComponent(), "Waypoints copied to clipboard!", "Points Copier", JOptionPane.DEFAULT_OPTION);
 			}
 			if(e.isControlDown() && (e.getExtendedKeyCode() == 78) && xInputs.size() != 0) {//CTRL + N
-				paths.put(new ArrayList<>(xInputs), new ArrayList<>(yInputs));
-				fig.repaint();
+				paths.put(new ArrayList<>(), new ArrayList<>());//Put a dummy entry in to protect the original path
 				xInputs.clear();
 				yInputs.clear();
 			}
@@ -514,9 +519,5 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			});
 			System.out.println("(" + x + ", " + y + ") " + " " + xScale + " " + yScale + " " + g.getRootPane().getMousePosition());
 		}
-	}
-
-	public static void main(String[] args) {
-		fig = new PathGUITool(true);
 	}
 }
