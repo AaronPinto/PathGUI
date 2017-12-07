@@ -21,28 +21,13 @@ import java.util.List;
  * Modified by: Aaron Pinto 
  */
 public class MPGen2D {
-	public double[][] origPath;
-	public double[][] nodeOnlyPath;
+	private double[][] origPath, leftPath, rightPath, heading;
+	private double[] smoothLeftPosition;
+	private double[] smoothRightPosition;
 	public double[][] smoothPath;
-	public double[][] leftPath;
-	public double[][] rightPath;
-	public double[][] origCenterVelocity;
-	public double[][] origRightVelocity;
-	public double[][] origLeftVelocity;
-	public double[][] smoothCenterVelocity;
-	public double[][] smoothRightVelocity;
-	public double[][] smoothLeftVelocity;
-	public double[][] heading;
-	public double[] smoothLeftPosition;
-	public double[] smoothCenterPosition;
-	public double[] smoothRightPosition;
-	public double[] smoothLeftAccel;
-	public double[] smoothRightAccel;
-	public double[] avgDeltaDistance;
 
-	double timeStep, totalTime, totalDistance, robotTrackWidth, pathAlpha, pathBeta, pathTolerance,
+	private double timeStep, totalTime, robotTrackWidth, pathAlpha, pathBeta, pathTolerance,
 	velocityAlpha, velocityBeta, velocityTolerance;
-	public double pathDist, numFinalPoints;
 
 	/**
 	 * Constructor to calculate a new 2D Motion Profile
@@ -77,25 +62,24 @@ public class MPGen2D {
 
 		for(int i = 0; i < arr.length; i++) {
 			temp[i] = new double[arr[i].length];
-			for(int j = 0; j < arr[i].length; j++)
-				temp[i][j] = arr[i][j];
+			System.arraycopy(arr[i], 0, temp[i], 0, arr[i].length);
 		}
 		return temp;
 	}
 
 	private static double[][] nodeOnlyWayPoints(double[][] path) {
-		List<double[]> li = new LinkedList<double[]>();
+		List<double[]> li = new LinkedList<>();
 		li.add(path[0]);//The starting waypoint
 
 		//find intermediate nodes and calculate direction
-		for(int i = 1; i < path.length - 1; i++) {			
-			/**
-			 * Calculates the angle in RADIANS of each successive pair of waypoints.
-			 * Vector 1 is the angle in RADIANS that the waypoint at position i-1 
-			 * makes with the waypoint at position i. The angle is relative to the
-			 * x-axis of the waypoint at i-1. Vector 2 is the angle in RADIANS that
-			 * the waypoint at position i makes with the waypoint at position i+1.
-			 * The angle is relative to the x-axis of the waypoint at i.
+		for(int i = 1; i < path.length - 1; i++) {
+			/*
+			  Calculates the angle in RADIANS of each successive pair of waypoints.
+			  Vector 1 is the angle in RADIANS that the waypoint at position i-1
+			  makes with the waypoint at position i. The angle is relative to the
+			  x-axis of the waypoint at i-1. Vector 2 is the angle in RADIANS that
+			  the waypoint at position i makes with the waypoint at position i+1.
+			  The angle is relative to the x-axis of the waypoint at i.
 			 */
 			double vector1 = Math.atan2((path[i][1] - path[i - 1][1]), path[i][0] - path[i - 1][0]);
 			double vector2 = Math.atan2((path[i + 1][1] - path[i][1]), path[i + 1][0] - path[i][0]);
@@ -106,11 +90,11 @@ public class MPGen2D {
 		}
 		li.add(path[path.length - 1]);//The last waypoint
 
-		/**
-		 * re-write nodes into new 2D Array, first and last points in the waypoint
-		 * sequence are always included in the new array even if there is no
-		 * direction change between the first to next point and the last to
-		 * previous point
+		/*
+		  re-write nodes into new 2D Array, first and last points in the waypoint
+		  sequence are always included in the new array even if there is no
+		  direction change between the first to next point and the last to
+		  previous point
 		 */
 		double[][] temp = new double[li.size()][2];
 
@@ -122,17 +106,16 @@ public class MPGen2D {
 	}
 
 	private int[] injectionCounter2Steps(double numNodeOnlyPoints, double maxTimeToComplete, double tStep) {
-		int[] ret = null;
+		int[] ret;
 		int first = 0;
 		int second = 0;
 		int third = 0;
 		double oldPointsTotal = 0;
 		double totalPoints = maxTimeToComplete / tStep;
-		numFinalPoints = 0;
 
 		if(totalPoints < 100) {
-			double pointsFirst = 0;
-			double pointsTotal = 0;
+			double pointsFirst;
+			double pointsTotal;
 
 			for(int i = 4; i <= 6; i++)
 				for(int j = 1; j <= 8; j++) {
@@ -143,15 +126,14 @@ public class MPGen2D {
 						first = i;
 						second = j;
 						//						System.out.println(first + " " + second);
-						numFinalPoints = pointsTotal;
 						oldPointsTotal = pointsTotal;
 					}
 				}
 			ret = new int[] {first, second, third};
 		} else {
-			double pointsFirst = 0;
-			double pointsSecond = 0;
-			double pointsTotal = 0;
+			double pointsFirst;
+			double pointsSecond;
+			double pointsTotal;
 
 			for(int i = 1; i <= 5; i++)
 				for(int j = 1; j <= 8; j++)
@@ -164,7 +146,6 @@ public class MPGen2D {
 							first = i;
 							second = j;
 							third = k;
-							numFinalPoints = pointsTotal;
 						}
 					}
 			ret = new int[] {first, second, third};
@@ -201,7 +182,6 @@ public class MPGen2D {
 		//copy last
 		morePoints[index][0] = orig[orig.length - 1][0];
 		morePoints[index][1] = orig[orig.length - 1][1];
-		index++;
 
 		//		for(int i = 1; i < morePoints.length; i++)
 		//			System.out.println(morePoints[i - 1][0] + " " + morePoints[i - 1][1] + " " + (morePoints[i][0] - morePoints[i - 1][0]));
@@ -323,7 +303,7 @@ public class MPGen2D {
 		 */
 		double[] difference = errorSum(origVelocity, smoothVelocity);
 		double[][] fixVel = new double[smoothVelocity.length][2];
-		double increase = 0.0;
+		double increase;
 
 		for(int i = 0; i < smoothVelocity.length; i++) {
 			fixVel[i][0] = smoothVelocity[i][0];
@@ -415,7 +395,7 @@ public class MPGen2D {
 	public void calculate() {
 		if(origPath != null) {
 			//first find only direction changing nodes
-			nodeOnlyPath = nodeOnlyWayPoints(origPath);
+			double[][] nodeOnlyPath = nodeOnlyWayPoints(origPath);
 
 			//				for(int i = 0; i < nodeOnlyPath.length; i++)
 			//					System.out.println(nodeOnlyPath[i][0] + " " + nodeOnlyPath[i][1]);
@@ -444,13 +424,13 @@ public class MPGen2D {
 			//			System.out.println("lX: " + leftPath[i][0] + ",lY: " + leftPath[i][1] + ",rX: " + rightPath[i][0]
 			//					+ ",rY: " + rightPath[i][1] + ",head: " + heading[i][1]);
 
-			origCenterVelocity = velocity(smoothPath, timeStep);
-			origLeftVelocity = velocity(leftPath, timeStep);
-			origRightVelocity = velocity(rightPath, timeStep);
+			double[][] origCenterVelocity = velocity(smoothPath, timeStep);
+			double[][] origLeftVelocity = velocity(leftPath, timeStep);
+			double[][] origRightVelocity = velocity(rightPath, timeStep);
 
-			smoothCenterVelocity = doubleArrayDeepCopy(origCenterVelocity);
-			smoothLeftVelocity = doubleArrayDeepCopy(origLeftVelocity);
-			smoothRightVelocity = doubleArrayDeepCopy(origRightVelocity);
+			double[][] smoothCenterVelocity = doubleArrayDeepCopy(origCenterVelocity);
+			double[][] smoothLeftVelocity = doubleArrayDeepCopy(origLeftVelocity);
+			double[][] smoothRightVelocity = doubleArrayDeepCopy(origRightVelocity);
 
 			smoothCenterVelocity[smoothCenterVelocity.length - 1][1] = 0.0;
 			smoothLeftVelocity[smoothLeftVelocity.length - 1][1] = 0.0;
@@ -481,7 +461,6 @@ public class MPGen2D {
 			}
 
 			smoothLeftPosition = getPosition(smoothLeftVelocity);
-			smoothCenterPosition = getPosition(smoothCenterVelocity);
 			smoothRightPosition = getPosition(smoothRightVelocity);
 
 			for(int i = 0; i < smoothLeftVelocity.length; i++) {
@@ -494,9 +473,7 @@ public class MPGen2D {
 			//							+ smoothLeftPosition[i] + " " + smoothRightPosition[i] + " " + heading[i][1]);
 			//				}
 
-			System.out.println(pathDist = calcPositionLength());
-
-			avgDeltaDistance = calcSumLengthBetweenPoints();
+			System.out.println(calcPositionLength());
 
 			//				for(int i = 0; i < avgDeltaDistance.length; i++)
 			//					System.out.println(avgDeltaDistance[i]);

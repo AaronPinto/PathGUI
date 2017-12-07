@@ -22,7 +22,7 @@ public class FileChooserDemo extends JPanel implements ActionListener {
 
 		//Create the log first, because the action listeners
 		//need to refer to it.
-		log = new JTextArea(5, 20);
+		log = new JTextArea(15, 60);
 		log.setMargin(new Insets(5, 5, 5, 5));
 		log.setEditable(false);
 		JScrollPane logScrollPane = new JScrollPane(log);
@@ -107,9 +107,7 @@ public class FileChooserDemo extends JPanel implements ActionListener {
 
 		//Handle open button action.
 		if(e.getSource() == openButton) {
-			int returnVal = fc.showOpenDialog(FileChooserDemo.this);
-
-			if(returnVal == JFileChooser.APPROVE_OPTION) {
+			if(fc.showOpenDialog(FileChooserDemo.this) == JFileChooser.APPROVE_OPTION) {
 				File file = fc.getSelectedFile();
 				//This is where a real application would open the file.
 				log.append("Opening: " + file.getName() + "." + newline);

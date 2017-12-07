@@ -1,6 +1,7 @@
 package GUIStuff;
 
 import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.ClipboardOwner;
@@ -475,7 +476,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 
 			g2.draw(new Line2D.Double(newX, yf, newX, yf + 10));
 
-			//dont label every x tic to prevent clutter
+			//Dont label every x tic to prevent clutter
 			if(i % (double) 1 == 0) g2.drawString(number, (float) (newX - (width / 2.0)), (float) yf + 25);
 
 			//add grid lines to chart
@@ -578,31 +579,39 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 
 	class WindowListener extends WindowAdapter {
 		public void windowClosing(WindowEvent e) {
-			int response = JOptionPane.showConfirmDialog(e.getComponent(), "Do you want to save your points?", "Point Saver",
-					JOptionPane.YES_NO_CANCEL_OPTION);
-			if(response == JOptionPane.YES_OPTION) {
-				try {
-					Calendar c = Calendar.getInstance();
-					File f = new File(System.getenv("USERPROFILE") + "\\Documents\\PathGUIToolSaves");
-					if(!f.exists()) f.mkdir();
-					FileWriter fw = new FileWriter(f.getPath() + String.format("\\%tB%te%tY-%tl%tM%tS%tp.txt", c, c, c, c, c, c, c));
-					if(xInputs.size() != 0) paths.put(new ArrayList<>(xInputs), new ArrayList<>(yInputs));
-					StringBuilder output = new StringBuilder();
-					paths.forEach((key, value) -> {
-						IntStream.range(0, value.size()).forEach(i -> output.append("{").append(key.get(i)).append(", ").append(value.get(i)).append("},\n"));
-						output.append("\n");
-					});
-					System.out.println(output);
-					fw.write(output.toString());
-					fw.flush();
-					fw.close();
-					JOptionPane.showConfirmDialog(e.getComponent(), "Points Saved Successfully!", "Points Saver",
-							JOptionPane.DEFAULT_OPTION);
-					System.exit(0);
-				} catch(IOException e1) {
-					e1.printStackTrace();
-				}
-			} else if(response == JOptionPane.NO_OPTION) System.exit(0);
+			if(!paths.isEmpty() || !xInputs.isEmpty() || !xDragInputs.isEmpty()) {
+				int response = JOptionPane.showConfirmDialog(e.getComponent(), "Do you want to save your points?", "Point Saver",
+						JOptionPane.YES_NO_CANCEL_OPTION);
+				if(response == JOptionPane.YES_OPTION) {
+					try {
+						Calendar c = Calendar.getInstance();
+						JFileChooser jfc = new JFileChooser();
+						jfc.setFileFilter(new FileNameExtensionFilter("Text Files", "txt", "text"));
+						jfc.setSelectedFile(new File(String.format("%tB%te%tY-%tl%tM%tS%tp.txt", c, c, c, c, c, c, c)));
+						if(jfc.showSaveDialog(e.getComponent()) == JFileChooser.APPROVE_OPTION) {
+							if(!jfc.getSelectedFile().getAbsolutePath().endsWith(".txt") || !jfc.getSelectedFile().getAbsolutePath().endsWith(".TXT"))
+								jfc.setSelectedFile(new File(jfc.getSelectedFile().getAbsolutePath() + ".txt"));
+							FileWriter fw = new FileWriter(jfc.getSelectedFile().getAbsolutePath());
+							if(xInputs.size() != 0) paths.put(new ArrayList<>(xInputs), new ArrayList<>(yInputs));
+							StringBuilder output = new StringBuilder();
+							paths.forEach((key, value) -> {
+								IntStream.range(0, value.size()).forEach(i -> output.append("{").append(key.get(i)).append(", ")
+										.append(value.get(i)).append("},\n"));
+								output.append("\n");
+							});
+							System.out.println(output);
+							fw.write(output.toString());
+							fw.flush();
+							fw.close();
+							JOptionPane.showConfirmDialog(e.getComponent(), "Points Saved Successfully!", "Points Saver",
+									JOptionPane.DEFAULT_OPTION);
+							System.exit(0);
+						}
+					} catch(IOException e1) {
+						e1.printStackTrace();
+					}
+				} else if(response == JOptionPane.NO_OPTION) System.exit(0);
+			} else System.exit(0);
 		}
 	}
 
@@ -625,8 +634,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				if(undoRedoCounter != 0 && !(undoRedoCounter > xInputsBuffer.size())) {
 					xInputs.add(xInputsBuffer.get(xInputsBuffer.size() - undoRedoCounter));
 					yInputs.add(yInputsBuffer.get(yInputsBuffer.size() - undoRedoCounter));
-					if(!link.isEmpty())
-						link.removeLast();
+					if(!link.isEmpty()) link.removeLast();
 					updatePath(xInputs, yInputs);
 					undoRedoCounter--;
 				} else {
@@ -637,10 +645,12 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			if(e.isControlDown() && (e.getExtendedKeyCode() == 67)) {//CTRL + C, Keycode for S = 83
 				StringBuilder output = new StringBuilder();
 				if(xInputs.size() != 0) paths.put(new ArrayList<>(xInputs), new ArrayList<>(yInputs));
-				if(drag && xDragInputs.size() != 0) paths.put(new ArrayList<>(xDragInputs), new ArrayList<>(yDragInputs));
+				if(drag && xDragInputs.size() != 0)
+					paths.put(new ArrayList<>(xDragInputs), new ArrayList<>(yDragInputs));
 				for(Entry<ArrayList<Double>, ArrayList<Double>> entry : paths.entrySet())
 					output.append(IntStream.range(0, entry.getValue().size()).mapToObj(i -> "{" + (entry.getKey().get(i) - entry.getKey().get(0))
-							+ ", " + (entry.getValue().get(i) - entry.getValue().get(0)) + "},\n").collect(Collectors.joining("", "", "\n")));
+							+ ", " + (entry.getValue().get(i) - entry.getValue().get(0)) + "},\n").collect(Collectors
+							.joining("", "", "\n")));
 				System.out.println(output);
 				Clipboard c = Toolkit.getDefaultToolkit().getSystemClipboard();
 				c.setContents(new StringSelection(output.toString()), fig);
@@ -678,6 +688,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				double y = (constrainTo(((height - 30) - p.getY()), rect.getHeight())) / yScale;
 				xDragInputs.add(x);
 				yDragInputs.add(y);
+				if(!link.isEmpty()) link.removeLast();
 				updatePath(xDragInputs, yDragInputs);
 				System.out.println("(" + x + ", " + y + ") " + xScale + " " + yScale + " " + g.getRootPane().getMousePosition());
 			}
@@ -685,11 +696,10 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 
 		public void mouseClicked(MouseEvent ev) {
 			Point p = g.getRootPane().getMousePosition();
-			double x = constrainTo((p.getX() - 30), rect.getWidth());
-			double y = constrainTo(((height - 30) - p.getY()), rect.getHeight());
-			double xField = x / xScale, yField = y / yScale;
-			xInputs.add(xField);
-			yInputs.add(yField);
+			double x = constrainTo((p.getX() - 30), rect.getWidth()) / xScale;
+			double y = constrainTo(((height - 30) - p.getY()), rect.getHeight()) / yScale;
+			xInputs.add(x);
+			yInputs.add(y);
 			if(!link.isEmpty()) link.removeLast();
 			updatePath(xInputs, yInputs);
 			//Every time a new point is added, clear the undo/redo buffers and re-add all the points in the current path to them
@@ -700,8 +710,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				xInputsBuffer.add(i, xInputs.get(i));
 				yInputsBuffer.add(i, yInputs.get(i));
 			});
-			System.out.println("(" + x + ", " + y + ") " + xField + " " + yField + " " + xScale + " " + yScale + " " +
-					g.getRootPane().getMousePosition());
+			System.out.println("(" + x + ", " + y + ") " + " " + xScale + " " + yScale + " " + g.getRootPane().getMousePosition());
 		}
 	}
 }
