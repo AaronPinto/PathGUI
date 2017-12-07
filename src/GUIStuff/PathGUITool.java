@@ -25,109 +25,23 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	private static PathGUITool fig;
 	private JFrame g = new JFrame("Path GUI Tool");
 	private int undoRedoCounter = 0;
-	private boolean drag = false;
+	private boolean draw;
 	private double upperXtic = 54.33333, upperYtic = 27, height, xScale, yScale,
 			yTickYMax = 0, yTickYMin = 0, x1vert = 0;
 	private Rectangle rect;
 	private ArrayList<Double> xInputs = new ArrayList<>(), yInputs = new ArrayList<>(),
-			xInputsBuffer = new ArrayList<>(), yInputsBuffer = new ArrayList<>(),
-			xDragInputs = new ArrayList<>(), yDragInputs = new ArrayList<>();
+			xInputsBuffer = new ArrayList<>(), yInputsBuffer = new ArrayList<>();
 	private LinkedHashMap<ArrayList<Double>, ArrayList<Double>> paths = new LinkedHashMap<>();
 
-	//Link List to hold all different plots on one graph.
-	private LinkedList<xyNode> link = new LinkedList<>();
-
 	/**
-	 * Constructor which Plots only Y-axis data.
+	 * Constructor.
 	 *
-	 * @param yData is a array of doubles representing the Y-axis values of the data to be plotted.
+	 * @param d is the boolean that handles if the GUI is in mouse-draw mode or not.
 	 */
-	public PathGUITool(double[] yData) {
-		this(null, yData, Color.red);
-	}
-
-	public PathGUITool(double[] yData, Color lineColor, Color marker) {
-		this(null, yData, lineColor, marker, false);
-	}
-
-	/**
-	 * Constructor which Plots chart based on provided x and y data. X and Y arrays must be of the same length.
-	 *
-	 * @param xData is an array of doubles representing the X-axis values of the data to be plotted.
-	 * @param yData is an array of double representing the Y-axis values of the data to be plotted.
-	 */
-	public PathGUITool(double[] xData, double[] yData) {
-		this(xData, yData, Color.red, null, false);
-	}
-
-	/**
-	 * Constructor which Plots chart based on provided x and y axis data.
-	 *
-	 * @param data is a 2D array of doubles of size Nx2 or 2xN. The plot assumes X is the first dimension, and y data
-	 *             is the second dimension.
-	 */
-	public PathGUITool(double[][] data) {
-		this(getXVector(data), getYVector(data), Color.red, null, false);
-	}
-
-	/**
-	 * Constructor which plots charts based on provided x and y axis data in a single two dimensional array.
-	 *
-	 * @param data        is a 2D array of doubles of size Nx2 or 2xN. The plot assumes X is the first dimension, and y data
-	 *                    is the second dimension.
-	 * @param lineColor   is the color the user wishes to be displayed for the line connecting each datapoint
-	 * @param markerColor is the color the user which to be used for the data point. Make this null if the user wishes to
-	 *                    not have datapoint markers.
-	 */
-	public PathGUITool(double[][] data, Color lineColor, Color markerColor) {
-		this(getXVector(data), getYVector(data), lineColor, markerColor, false);
-	}
-
-	/**
-	 * Constructor which plots charts based on provided x and y axis data provided as separate arrays. The user can also
-	 * specify the color of the adjoining line.
-	 * Data markers are not displayed.
-	 *
-	 * @param xData     is an array of doubles representing the X-axis values of the data to be plotted.
-	 * @param yData     is an array of double representing the Y-axis values of the data to be plotted.
-	 * @param lineColor is the color the user wishes to be displayed for the line connecting each datapoint
-	 */
-	public PathGUITool(double[] xData, double[] yData, Color lineColor) {
-		this(xData, yData, lineColor, null, false);
-	}
-
-	public PathGUITool(double[][] data, Color lineColor) {
-		this(getXVector(data), getYVector(data), lineColor, null, false);
-	}
-
-	/**
-	 * Constructor which plots charts based on x and y axis data selected on the Field GUI.
-	 *
-	 * @param dragMode is laggy af so dw about it
-	 */
-	public PathGUITool(boolean dragMode) {
-		this(null, null, null, null, dragMode);
-	}
-
-	/**
-	 * Constructor which plots charts based on provided x and y axis data, provided as separate arrays. The user
-	 * can also specify the color of the adjoining line and the color of the datapoint maker.
-	 *
-	 * @param xData       is an array of doubles representing the X-axis values of the data to be plotted.
-	 * @param yData       is an array of double representing the Y-axis values of the data to be plotted.
-	 * @param lineColor   is the color the user wishes to be displayed for the line connecting each datapoint
-	 * @param markerColor is the color the user which to be used for the data point. Make this null if the user wishes to
-	 *                    not have datapoint markers.
-	 * @param d           is the boolean that handles if the GUI is in mouse-drag mode or not.
-	 */
-	public PathGUITool(double[] xData, double[] yData, Color lineColor, Color markerColor, boolean d) {
+	public PathGUITool(boolean d) {
 		upperXtic = -Double.MAX_VALUE;
 		upperYtic = -Double.MAX_VALUE;
-		drag = d;
-
-		link.add(new xyNode(new double[]{0}, new double[]{0}, false, null, null));
-
-		if(yData != null) addData(xData, yData, lineColor, markerColor);
+		draw = d;
 
 		//Set the properties of this JFrame
 		g.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -144,20 +58,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		g.addKeyListener(new KeyboardListener());
 	}
 
-	private static double[] getXVector(double[][] arr) {
-		return Arrays.stream(arr).mapToDouble(doubles -> doubles[0]).toArray();
-	}
-
-	private static double[] getYVector(double[][] arr) {
-		return Arrays.stream(arr).mapToDouble(doubles -> doubles[1]).toArray();
-	}
-
 	private static double constrainTo(double value, double maxConstrain) {
 		return Math.max(0.0, Math.min(maxConstrain, value));
-	}
-
-	public static void main(String[] args) {
-		fig = new PathGUITool(true);
 	}
 
 	/**
@@ -199,89 +101,11 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		plot(g2);
 	}
 
-	public void addData(double[] y, Color lineColor) {
-		addData(y, lineColor, null);
-	}
-
-	public void addData(double[] y, Color lineColor, Color marker) {
-		//cant add y only data unless all other data is y only data
-		link.stream().filter(data -> data.x != null).forEach(data -> {
-			throw new Error("All previous chart series need to have only Y data arrays");
-		});
-
-		addData(null, y, lineColor, marker);
-	}
-
-	public void addData(double[] x, double[] y, Color lineColor) {
-		addData(x, y, lineColor, null);
-	}
-
-	public void addData(double[][] data, Color lineColor) {
-		addData(getXVector(data), getYVector(data), lineColor, null);
-	}
-
-	public void addData(double[][] data, Color lineColor, Color marker) {
-		if(data != null)
-			addData(getXVector(data), getYVector(data), lineColor, marker);
-	}
-
-	public void addData(double[] x, double[] y, Color lineColor, Color marker) {
-		xyNode Data = new xyNode();
-
-		//copy y array into node
-		Data.y = new double[y.length];
-		Data.lineColor = lineColor;
-
-		if(marker == null)
-			Data.lineMarker = false;
-		else {
-			Data.lineMarker = true;
-			Data.markerColor = marker;
-		}
-		System.arraycopy(y, 0, Data.y, 0, y.length);
-
-		//if X is not null, copy x
-		if(x != null) {
-			//cant add x, and y data unless all other data has x and y data
-			link.stream().filter(data -> data.x == null).forEach(data -> {
-				throw new Error("All previous chart series need to have both X and Y data arrays");
-			});
-			if(x.length != y.length)
-				throw new Error("X dimension must match Y dimension");
-			Data.x = new double[x.length];
-			System.arraycopy(x, 0, Data.x, 0, x.length);
-		}
-		link.add(Data);
-	}
-
 	private void plot(Graphics2D g2) {
 		int h = super.getHeight();
 		Color tempC = g2.getColor();
 
 		//loop through list and plot each
-		for(xyNode aLink : link)
-			for(int j = 0; j < aLink.y.length - 1; j++) {
-				double x1, x2;
-
-				if(aLink.x == null) {
-					x1 = 30 + j * xScale;
-					x2 = 30 + (j + 1) * xScale;
-				} else {
-					x1 = 30 + xScale * aLink.x[j];
-					x2 = 30 + xScale * aLink.x[j + 1];
-				}
-
-				double y1 = h - 30 - yScale * aLink.y[j], y2 = h - 30 - yScale * aLink.y[j + 1];
-				g2.setPaint(aLink.lineColor);
-				g2.draw(new Line2D.Double(x1, y1, x2, y2));
-
-				if(aLink.lineMarker) {
-					g2.setPaint(aLink.markerColor);
-					g2.fill(new Ellipse2D.Double(x1 - 2, y1 - 2, 4, 4));
-					g2.fill(new Ellipse2D.Double(x2 - 2, y2 - 2, 4, 4));
-				}
-			}
-
 		paths.forEach((key, value) -> {
 			selectedPath = new MPGen2D(mergeArrays(key, value), 3.0, 0.02, 3.867227572441874);
 			selectedPath.calculate();
@@ -476,7 +300,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 
 			g2.draw(new Line2D.Double(newX, yf, newX, yf + 10));
 
-			//Dont label every x tic to prevent clutter
+			//Dont label every x tic to prevent clutter based off of window width
+//			System.out.println(getWidth());
 			if(i % (double) 1 == 0) g2.drawString(number, (float) (newX - (width / 2.0)), (float) yf + 25);
 
 			//add grid lines to chart
@@ -525,18 +350,30 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			}
 	}
 
-	public void updateData(int series, double[][] data, Color line, Color marker) {
-		addData(data, line, marker);
-
-		link.get(series).x = link.getLast().x.clone();
-		link.get(series).y = link.getLast().y.clone();
-		link.removeLast();
-	}
-
 	@Override
 	public void lostOwnership(Clipboard clip, Transferable transferable) {
 		//We must keep the object we placed on the system clipboard
 		//until this method is called.
+	}
+
+	private static ArrayList<Double> getXVector(double[][] arr) {
+		ArrayList<Double> temp = new ArrayList<>();
+		double[] xVals = Arrays.stream(arr).mapToDouble(doubles -> doubles[0]).toArray();
+		IntStream.range(0, xVals.length).forEach(i -> temp.add(i, xVals[i]));
+		return temp;
+	}
+
+	private static ArrayList<Double> getYVector(double[][] arr) {
+		ArrayList<Double> temp = new ArrayList<>();
+		double[] xVals = Arrays.stream(arr).mapToDouble(doubles -> doubles[1]).toArray();
+		IntStream.range(0, xVals.length).forEach(i -> temp.add(i, xVals[i]));
+		return temp;
+	}
+
+	private static void removeLast(LinkedHashMap<ArrayList<Double>, ArrayList<Double>> dank) {
+		ArrayList<Double> keyOfLast = null;
+		for(Entry<ArrayList<Double>, ArrayList<Double>> entry : dank.entrySet()) keyOfLast = entry.getKey();
+		dank.remove(keyOfLast);
 	}
 
 	private double[][] mergeArrays(ArrayList<Double> x, ArrayList<Double> y) {
@@ -551,35 +388,14 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	private void updatePath(ArrayList<Double> x, ArrayList<Double> y) {
 		selectedPath = new MPGen2D(mergeArrays(x, y), 3.0, 0.02, 3.867227572441874);
 		selectedPath.calculate();
-		fig.addData(selectedPath.smoothPath, Color.green, Color.green);
+		if(selectedPath.smoothPath != null)
+			paths.put(getXVector(selectedPath.smoothPath), getYVector(selectedPath.smoothPath));
 		fig.repaint();
-	}
-
-	private class xyNode {
-		double[] x;
-		double[] y;
-		boolean lineMarker;
-		Color lineColor;
-		Color markerColor;
-
-		xyNode() {
-			x = null;
-			y = null;
-			lineMarker = false;
-		}
-
-		xyNode(double[] xArr, double[] yArr, boolean lm, Color l, Color m) {
-			x = xArr;
-			y = yArr;
-			lineMarker = lm;
-			lineColor = l;
-			markerColor = m;
-		}
 	}
 
 	class WindowListener extends WindowAdapter {
 		public void windowClosing(WindowEvent e) {
-			if(!paths.isEmpty() || !xInputs.isEmpty() || !xDragInputs.isEmpty()) {
+			if(!paths.isEmpty() || !xInputs.isEmpty()) {
 				int response = JOptionPane.showConfirmDialog(e.getComponent(), "Do you want to save your points?", "Point Saver",
 						JOptionPane.YES_NO_CANCEL_OPTION);
 				if(response == JOptionPane.YES_OPTION) {
@@ -623,7 +439,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 					undoRedoCounter++;
 					xInputs.remove(xInputs.size() - 1);
 					yInputs.remove(yInputs.size() - 1);
-					link.removeLast();
+					removeLast(paths);
 					updatePath(xInputs, yInputs);
 				} else {
 					JOptionPane.showConfirmDialog(e.getComponent(), "No More Undos!", "", JOptionPane.DEFAULT_OPTION);
@@ -634,7 +450,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				if(undoRedoCounter != 0 && !(undoRedoCounter > xInputsBuffer.size())) {
 					xInputs.add(xInputsBuffer.get(xInputsBuffer.size() - undoRedoCounter));
 					yInputs.add(yInputsBuffer.get(yInputsBuffer.size() - undoRedoCounter));
-					if(!link.isEmpty()) link.removeLast();
+					removeLast(paths);
 					updatePath(xInputs, yInputs);
 					undoRedoCounter--;
 				} else {
@@ -645,8 +461,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			if(e.isControlDown() && (e.getExtendedKeyCode() == 67)) {//CTRL + C, Keycode for S = 83
 				StringBuilder output = new StringBuilder();
 				if(xInputs.size() != 0) paths.put(new ArrayList<>(xInputs), new ArrayList<>(yInputs));
-				if(drag && xDragInputs.size() != 0)
-					paths.put(new ArrayList<>(xDragInputs), new ArrayList<>(yDragInputs));
 				for(Entry<ArrayList<Double>, ArrayList<Double>> entry : paths.entrySet())
 					output.append(IntStream.range(0, entry.getValue().size()).mapToObj(i -> "{" + (entry.getKey().get(i) - entry.getKey().get(0))
 							+ ", " + (entry.getValue().get(i) - entry.getValue().get(0)) + "},\n").collect(Collectors
@@ -661,15 +475,10 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				fig.repaint();
 				xInputs.clear();
 				yInputs.clear();
-				if(drag && xDragInputs.size() != 0) {
-					paths.put(new ArrayList<>(xDragInputs), new ArrayList<>(yDragInputs));
-					xDragInputs.clear();
-					yDragInputs.clear();
-				}
 			}
 			if(e.isControlDown() && (e.getExtendedKeyCode() == 68)) {
-				drag = !drag;
-				JOptionPane.showMessageDialog(e.getComponent(), String.format("Drag mode set to %b", drag), "Drag Mode Status",
+				draw = !draw;
+				JOptionPane.showMessageDialog(e.getComponent(), String.format("Draw mode set to %b", draw), "Draw Mode Status",
 						JOptionPane.INFORMATION_MESSAGE);
 			}
 		}
@@ -677,30 +486,23 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 
 	class MouseListener extends MouseAdapter {
 		public void mouseDragged(MouseEvent ev) {
-			//Drag mode essentially allows you to specify a free-flowing path for the robot to follow
+			//Draw mode essentially allows you to specify a free-flowing path for the robot to follow.
 			//Instead of clicking multiple waypoints, it automatically takes your cursor location as
-			//A waypoint, adds that to the list of waypoints and then updates the GUI.
-			//It does not generate a new path every time because of the amount of waypoints that accumulate over time
-			//But if it were to generate a path, it would look very similar
-			if(drag) {
-				Point p = g.getRootPane().getMousePosition();
-				double x = (constrainTo((p.getX() - 30), rect.getWidth())) / xScale;
-				double y = (constrainTo(((height - 30) - p.getY()), rect.getHeight())) / yScale;
-				xDragInputs.add(x);
-				yDragInputs.add(y);
-				if(!link.isEmpty()) link.removeLast();
-				updatePath(xDragInputs, yDragInputs);
-				System.out.println("(" + x + ", " + y + ") " + xScale + " " + yScale + " " + g.getRootPane().getMousePosition());
-			}
+			//a waypoint, adds that to the list of waypoints and then updates the GUI.
+			if(draw) updateWaypoints();
 		}
 
 		public void mouseClicked(MouseEvent ev) {
+			updateWaypoints();
+		}
+
+		private void updateWaypoints() {
 			Point p = g.getRootPane().getMousePosition();
 			double x = constrainTo((p.getX() - 30), rect.getWidth()) / xScale;
 			double y = constrainTo(((height - 30) - p.getY()), rect.getHeight()) / yScale;
 			xInputs.add(x);
 			yInputs.add(y);
-			if(!link.isEmpty()) link.removeLast();
+			if(!paths.isEmpty()) removeLast(paths);
 			updatePath(xInputs, yInputs);
 			//Every time a new point is added, clear the undo/redo buffers and re-add all the points in the current path to them
 			undoRedoCounter = 0;
@@ -712,5 +514,9 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			});
 			System.out.println("(" + x + ", " + y + ") " + " " + xScale + " " + yScale + " " + g.getRootPane().getMousePosition());
 		}
+	}
+
+	public static void main(String[] args) {
+		fig = new PathGUITool(true);
 	}
 }
