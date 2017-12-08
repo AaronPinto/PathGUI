@@ -30,7 +30,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			yTickYMax = 0, yTickYMin = 0, x1vert = 0;
 	private Rectangle rect;
 	private ArrayList<Double> xInputs = new ArrayList<>(), yInputs = new ArrayList<>(),
-			xInputsBuffer = new ArrayList<>(), yInputsBuffer = new ArrayList<>();
+			xInputsBuffer = new ArrayList<>(), yInputsBuffer = new ArrayList<>(),
+			xDragInputs = new ArrayList<>(), yDragInputs = new ArrayList<>();
 	private LinkedHashMap<ArrayList<Double>, ArrayList<Double>> paths = new LinkedHashMap<>();
 
 	/**
@@ -131,11 +132,9 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 
 		//loop through list and plot each
 		paths.forEach((key, value) -> {
-			selectedPath = new MPGen2D(mergeArrays(key, value), 3.0, 0.02, 3.867227572441874);
-			selectedPath.calculate();
-			IntStream.range(0, selectedPath.smoothPath.length - 1).forEach(i -> {
-				double x1 = 30 + xScale * selectedPath.smoothPath[i][0], x2 = 30 + xScale * selectedPath.smoothPath[i + 1][0];
-				double y1 = h - 30 - yScale * selectedPath.smoothPath[i][1], y2 = h - 30 - yScale * selectedPath.smoothPath[i + 1][1];
+			IntStream.range(0, key.size() - 1).forEach(i -> {
+				double x1 = 30 + xScale * key.get(i), x2 = 30 + xScale * key.get(i + 1);
+				double y1 = h - 30 - yScale * value.get(i), y2 = h - 30 - yScale * value.get(i + 1);
 				g2.setPaint(Color.green);
 				g2.draw(new Line2D.Double(x1, y1, x2, y2));
 				g2.fill(new Ellipse2D.Double(x1 - 2, y1 - 2, 4, 4));
@@ -403,11 +402,16 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		return output.toString();
 	}
 
-	private void updatePath(ArrayList<Double> x, ArrayList<Double> y) {
-		selectedPath = new MPGen2D(mergeArrays(x, y), 3.0, 0.02, 3.867227572441874);
+	private void updatePath(double[][] p) {
+		selectedPath = new MPGen2D(p, 20.0, 0.02, 3.867227572441874);
 		selectedPath.calculate();
 		if(selectedPath.smoothPath != null)
 			paths.put(getXVector(selectedPath.smoothPath), getYVector(selectedPath.smoothPath));
+		fig.repaint();
+	}
+
+	private void updatePath(ArrayList<Double> x, ArrayList<Double> y) {
+		paths.put(x, y);
 		fig.repaint();
 	}
 
@@ -426,7 +430,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 							if(!jfc.getSelectedFile().getAbsolutePath().endsWith(".txt") && !jfc.getSelectedFile().getAbsolutePath().endsWith(".TXT"))
 								jfc.setSelectedFile(new File(jfc.getSelectedFile().getAbsolutePath() + ".txt"));
 							FileWriter fw = new FileWriter(jfc.getSelectedFile().getAbsolutePath());
-							if(xInputs.size() != 0) updatePath(new ArrayList<>(xInputs), new ArrayList<>(yInputs));
+							if(xInputs.size() != 0) updatePath(mergeArrays(new ArrayList<>(xInputs), new ArrayList<>(yInputs)));
 							fw.write(output2DArray());
 							fw.flush();
 							fw.close();
@@ -451,7 +455,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 					xInputs.remove(xInputs.size() - 1);
 					yInputs.remove(yInputs.size() - 1);
 					removeLast(paths);
-					updatePath(xInputs, yInputs);
+					updatePath(mergeArrays(xInputs, yInputs));
 				} else {
 					JOptionPane.showConfirmDialog(e.getComponent(), "No More Undos!", "", JOptionPane.DEFAULT_OPTION);
 					fig.repaint();
@@ -462,7 +466,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 					xInputs.add(xInputsBuffer.get(xInputsBuffer.size() - undoRedoCounter));
 					yInputs.add(yInputsBuffer.get(yInputsBuffer.size() - undoRedoCounter));
 					removeLast(paths);
-					updatePath(xInputs, yInputs);
+					updatePath(mergeArrays(xInputs, yInputs));
 					undoRedoCounter--;
 				} else {
 					JOptionPane.showConfirmDialog(e.getComponent(), "No More Redos!", "", JOptionPane.DEFAULT_OPTION);
@@ -470,7 +474,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				}
 			}
 			if(e.isControlDown() && (e.getExtendedKeyCode() == 67)) {//CTRL + C, Keycode for S = 83
-				if(xInputs.size() != 0) updatePath(new ArrayList<>(xInputs), new ArrayList<>(yInputs));
+				if(xInputs.size() != 0) updatePath(mergeArrays(new ArrayList<>(xInputs), new ArrayList<>(yInputs)));
 //				paths.put(new ArrayList<>(), new ArrayList<>());//Put a dummy entry in to protect the original path
 				Clipboard c = Toolkit.getDefaultToolkit().getSystemClipboard();
 				c.setContents(new StringSelection(output2DArray()), fig);
@@ -494,22 +498,47 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			//Draw mode essentially allows you to specify a free-flowing path for the robot to follow.
 			//Instead of clicking multiple waypoints, it automatically takes your cursor location as
 			//a waypoint, adds that to the list of waypoints and then updates the GUI.
-			if(draw) updateWaypoints();
+			if(draw) updateWaypoints(true);
 		}
 
 		public void mouseClicked(MouseEvent ev) {
-			updateWaypoints();
+			updateWaypoints(false);
 		}
 
-		private void updateWaypoints() {
+		private boolean previousDraw = false;
+		private void updateWaypoints(boolean draw) {
 			//Get the mouse position (x, y) on the window, constrain it to the field borders and convert it to feet.
 			Point p = g.getRootPane().getMousePosition();
 			double x = constrainTo((p.getX() - 30), rect.getWidth()) / xScale;
 			double y = constrainTo(((height - 30) - p.getY()), rect.getHeight()) / yScale;
-			xInputs.add(x);
-			yInputs.add(y);
 			if(!paths.isEmpty()) removeLast(paths);
-			updatePath(xInputs, yInputs);
+			if(draw) {
+				if(previousDraw) {//Handles staying at draw mode
+					xDragInputs.add(x);
+					yDragInputs.add(y);
+					updatePath(xDragInputs, yDragInputs);
+				} else {//Handles going from click to draw mode
+					updatePath(new ArrayList<>(), new ArrayList<>());
+					xInputs.add(xInputs.get(xInputs.size() - 1));
+					yInputs.add(yInputs.get(yInputs.size() - 1));
+					xInputs.add(x);
+					yInputs.add(y);
+					updatePath(mergeArrays(xInputs, yInputs));
+				}
+			} else {
+				if(previousDraw) {//Handles going from draw to click mode
+					updatePath(new ArrayList<>(), new ArrayList<>());
+					xInputs.add(xDragInputs.get(xDragInputs.size() - 1));
+					yInputs.add(yDragInputs.get(yDragInputs.size() - 1));
+					xInputs.add(x);
+					yInputs.add(y);
+					updatePath(mergeArrays(xInputs, yInputs));
+				} else {//Handles staying at click mode
+					xInputs.add(x);
+					yInputs.add(y);
+					updatePath(mergeArrays(xInputs, yInputs));
+				}
+			}
 			//Every time a new point is added, clear the undo/redo buffers and re-add all the points in the current path to them
 			undoRedoCounter = 0;
 			xInputsBuffer.clear();
@@ -519,6 +548,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				yInputsBuffer.add(i, yInputs.get(i));
 			});
 			System.out.println("(" + x + ", " + y + ") " + " " + xScale + " " + yScale + " " + g.getRootPane().getMousePosition());
+			previousDraw = draw;
 		}
 	}
 }
