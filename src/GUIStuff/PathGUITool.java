@@ -502,6 +502,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		}
 
 		private void updateWaypoints() {
+			//Get the mouse position (x, y) on the window, constrain it to the field borders and convert it to feet.
 			Point p = g.getRootPane().getMousePosition();
 			double x = constrainTo((p.getX() - 30), rect.getWidth()) / xScale;
 			double y = constrainTo(((height - 30) - p.getY()), rect.getHeight()) / yScale;
