@@ -25,23 +25,22 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	private static PathGUITool fig;
 	private JFrame g = new JFrame("Path GUI Tool");
 	private int undoRedoCounter = 0;
-	private boolean draw;
+	private boolean draw = true;
 	private double upperXtic, upperYtic, height, xScale, yScale,
 			yTickYMax = 0, yTickYMin = 0, x1vert = 0;
 	private Rectangle rect;
 	private ArrayList<Point> inputs = new ArrayList<>(), inputsBuffer = new ArrayList<>(), currentPath = new ArrayList<>(),
 			previousPath = new ArrayList<>();
+	private Point lastPoint = new Point(Double.MAX_VALUE, Double.MAX_VALUE);
 	private LinkedHashMap<String, ArrayList<Point>> paths = new LinkedHashMap<>();
+	private boolean previousDraw = false;
 
 	/**
 	 * Constructor.
-	 *
-	 * @param d is the boolean that handles if the GUI is in mouse-draw mode or not.
 	 */
-	private PathGUITool(boolean d) {
+	private PathGUITool() {
 		upperXtic = -Double.MAX_VALUE;
 		upperYtic = -Double.MAX_VALUE;
-		draw = d;
 
 		//Set the properties of this JFrame
 		g.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -62,22 +61,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		return Math.max(0.0, Math.min(maxConstrain, value));
 	}
 
-	private static ArrayList<Double> getXVector(double[][] arr) {
-		ArrayList<Double> temp = new ArrayList<>();
-		double[] xVals = Arrays.stream(arr).mapToDouble(doubles -> doubles[0]).toArray();
-		IntStream.range(0, xVals.length).forEach(i -> temp.add(i, xVals[i]));
-		return temp;
-	}
-
-	private static ArrayList<Double> getYVector(double[][] arr) {
-		ArrayList<Double> temp = new ArrayList<>();
-		double[] xVals = Arrays.stream(arr).mapToDouble(doubles -> doubles[1]).toArray();
-		IntStream.range(0, xVals.length).forEach(i -> temp.add(i, xVals[i]));
-		return temp;
-	}
-
 	public static void main(String[] args) {
-		fig = new PathGUITool(true);
+		fig = new PathGUITool();
 	}
 
 	/**
@@ -400,19 +385,10 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	}
 
 	private void updatePath(ArrayList<Point> p) {
-		System.out.println("This shouldn't run");
 		selectedPath = new MPGen2D(convertPointArray(p), 5.0, 0.02, 3.867227572441874);
 		selectedPath.calculate();
 		if(selectedPath.smoothPath != null)
-			IntStream.range(0, selectedPath.smoothPath.length).forEach(i -> {
-				currentPath.add(new Point(selectedPath.smoothPath[i][0], selectedPath.smoothPath[i][1]));
-//				System.out.println(currentPath.get(i).x + " " + currentPath.get(i).y);
-			});
-		fig.repaint();
-	}
-
-	private void updateDrawnPath(Point p) {
-		currentPath.add(p);
+			IntStream.range(0, selectedPath.smoothPath.length).forEach(i -> currentPath.add(new Point(selectedPath.smoothPath[i][0], selectedPath.smoothPath[i][1])));
 		fig.repaint();
 	}
 
@@ -423,11 +399,15 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			this.x = x;
 			this.y = y;
 		}
+
+		public boolean equals(Point p) {
+			return (this.x == p.x) && (this.y == p.y);
+		}
 	}
 
 	class WindowListener extends WindowAdapter {
 		public void windowClosing(WindowEvent e) {
-			if(!paths.isEmpty() || !inputs.isEmpty()) {
+			if(!paths.isEmpty() || !inputs.isEmpty() || !currentPath.isEmpty()) {
 				int response = JOptionPane.showConfirmDialog(e.getComponent(), "Do you want to save your points?", "Point Saver",
 						JOptionPane.YES_NO_CANCEL_OPTION);
 				if(response == JOptionPane.YES_OPTION) {
@@ -460,11 +440,12 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		public void keyPressed(KeyEvent e) {
 			System.out.println(e.isControlDown() + " " + e.getExtendedKeyCode());
 			if(e.isControlDown() && (e.getExtendedKeyCode() == 90)) {//CTRL + Z
-				if(inputs.size() > 0) {
+				if(currentPath.size() > 0) {
 					undoRedoCounter++;
-					inputs.remove(inputs.size() - 1);
+					if(!inputs.isEmpty())
+						inputs.remove(inputs.size() - 1);
 					currentPath.remove(currentPath.size() - 1);
-					updatePath(inputs);
+					fig.repaint();
 				} else {
 					JOptionPane.showConfirmDialog(e.getComponent(), "No More Undos!", "", JOptionPane.DEFAULT_OPTION);
 					fig.repaint();
@@ -474,7 +455,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				if(undoRedoCounter != 0 && !(undoRedoCounter > inputsBuffer.size())) {
 					inputs.add(inputsBuffer.get(inputsBuffer.size() - undoRedoCounter));
 					currentPath.remove(currentPath.size() - 1);
-					updatePath(inputs);
+					fig.repaint();
 					undoRedoCounter--;
 				} else {
 					JOptionPane.showConfirmDialog(e.getComponent(), "No More Redos!", "", JOptionPane.DEFAULT_OPTION);
@@ -483,7 +464,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			}
 			if(e.isControlDown() && (e.getExtendedKeyCode() == 67)) {//CTRL + C, Keycode for S = 83
 				if(inputs.size() != 0) updatePath(inputs);
-//				paths.put(new ArrayList<>(), new ArrayList<>());//Put a dummy entry in to protect the original path
 				Clipboard c = Toolkit.getDefaultToolkit().getSystemClipboard();
 				c.setContents(new StringSelection(output2DArray()), fig);
 				JOptionPane.showConfirmDialog(e.getComponent(), "Waypoints copied to clipboard!", "Points Copier", JOptionPane.DEFAULT_OPTION);
@@ -500,8 +480,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			}
 		}
 	}
-
-	private boolean previousDraw = false;
 
 	class MouseListener extends MouseAdapter {
 		public void mouseDragged(MouseEvent ev) {
@@ -523,10 +501,15 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			if(draw) {
 				if(previousDraw) {//Handles staying at draw mode
 					System.out.println("spicy");
-					updateDrawnPath(new Point(x, y));
+					currentPath.add(new Point(x, y));
+					fig.repaint();
 				} else {//Handles going from click to draw mode
 					System.out.println("pls");
-					currentPath.clear();
+					for(int i = currentPath.size() - 1; i >= 0; i--)
+						if(!currentPath.get(i).equals(lastPoint))
+							currentPath.remove(i);
+						else
+							break;
 					inputs.add(new Point(x, y));
 					updatePath(inputs);
 				}
@@ -540,18 +523,23 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 					selectedPath.calculate();
 					currentPath = new ArrayList<>(previousPath);
 					if(selectedPath.smoothPath != null)
-						IntStream.range(0, selectedPath.smoothPath.length).forEach(i -> {
-							currentPath.add(new Point(selectedPath.smoothPath[i][0], selectedPath.smoothPath[i][1]));
-						});
+						IntStream.range(0, selectedPath.smoothPath.length).forEach(i -> currentPath.add(new Point(selectedPath.smoothPath[i][0], selectedPath.smoothPath[i][1])));
+					if(selectedPath.smoothPath != null)
+						lastPoint = new Point(selectedPath.smoothPath[0][0], selectedPath.smoothPath[0][1]);
+					System.out.println(lastPoint.x + " " + lastPoint.y);
 					fig.repaint();
 				} else {//Handles staying at click mode
 					System.out.println("dank");
-					currentPath.clear();
+					for(int i = currentPath.size() - 1; i >= 0; i--)
+						if(!currentPath.get(i).equals(lastPoint))
+							currentPath.remove(i);
+						else
+							break;
 					inputs.add(new Point(x, y));
 					updatePath(inputs);
 				}
 			}
-			//Every time a new point is added, clear the undo/redo buffers and re-add all the points in the current path to them
+			//Every time a new point is added, clear the undo/redo buffers and re-add all the points in the input list to them
 			undoRedoCounter = 0;
 			inputsBuffer.clear();
 			IntStream.range(0, inputs.size()).forEach(i -> inputsBuffer.add(i, inputs.get(i)));
