@@ -17,7 +17,7 @@ public class FileChooserDemo extends JPanel implements ActionListener {
 	private JTextArea log;
 	private JFileChooser fc;
 
-	public FileChooserDemo() {
+	private FileChooserDemo() {
 		super(new BorderLayout());
 
 		//Create the log first, because the action listeners
@@ -42,14 +42,12 @@ public class FileChooserDemo extends JPanel implements ActionListener {
 
 		//Create the open button.  We use the image from the JLF
 		//Graphics Repository (but we extracted it from the jar).
-		openButton = new JButton("Open a File...",
-				createImageIcon("images/Open16.gif"));
+		openButton = new JButton(new ImageIcon("C:/Users/aaron/Pictures/Nirm.png"));
 		openButton.addActionListener(this);
 
 		//Create the save button.  We use the image from the JLF
 		//Graphics Repository (but we extracted it from the jar).
-		saveButton = new JButton("Save a File...",
-				createImageIcon("images/Save16.gif"));
+		saveButton = new JButton(new ImageIcon("C:/Users/aaron/Pictures/Screenshot_20170425-200815.png"));
 		saveButton.addActionListener(this);
 
 		//For layout purposes, put the buttons in a separate panel
@@ -60,19 +58,6 @@ public class FileChooserDemo extends JPanel implements ActionListener {
 		//Add the buttons and the log to this panel.
 		add(buttonPanel, BorderLayout.PAGE_START);
 		add(logScrollPane, BorderLayout.CENTER);
-	}
-
-	/**
-	 * Returns an ImageIcon, or null if the path was invalid.
-	 */
-	protected static ImageIcon createImageIcon(String path) {
-		java.net.URL imgURL = FileChooserDemo.class.getResource(path);
-		if(imgURL != null) {
-			return new ImageIcon(imgURL);
-		} else {
-			System.err.println("Couldn't find file: " + path);
-			return null;
-		}
 	}
 
 	/**
@@ -104,16 +89,14 @@ public class FileChooserDemo extends JPanel implements ActionListener {
 	}
 
 	public void actionPerformed(ActionEvent e) {
-
 		//Handle open button action.
 		if(e.getSource() == openButton) {
 			if(fc.showOpenDialog(FileChooserDemo.this) == JFileChooser.APPROVE_OPTION) {
 				File file = fc.getSelectedFile();
 				//This is where a real application would open the file.
 				log.append("Opening: " + file.getName() + "." + newline);
-			} else {
+			} else
 				log.append("Open command cancelled by user." + newline);
-			}
 			log.setCaretPosition(log.getDocument().getLength());
 
 			//Handle save button action.
@@ -123,9 +106,8 @@ public class FileChooserDemo extends JPanel implements ActionListener {
 				File file = fc.getSelectedFile();
 				//This is where a real application would save the file.
 				log.append("Saving: " + file.getName() + "." + newline);
-			} else {
+			} else
 				log.append("Save command cancelled by user." + newline);
-			}
 			log.setCaretPosition(log.getDocument().getLength());
 		}
 	}

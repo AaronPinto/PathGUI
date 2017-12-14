@@ -3,21 +3,14 @@ package GUIStuff;
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
-import java.awt.datatransfer.Clipboard;
-import java.awt.datatransfer.ClipboardOwner;
-import java.awt.datatransfer.StringSelection;
-import java.awt.datatransfer.Transferable;
+import java.awt.datatransfer.*;
 import java.awt.event.*;
-import java.awt.geom.Ellipse2D;
-import java.awt.geom.Line2D;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.awt.geom.*;
+import java.io.*;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import java.util.stream.*;
 
 public class PathGUITool extends JPanel implements ClipboardOwner {
 	private static final long serialVersionUID = 3205256608145459434L;
@@ -43,9 +36,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		upperYtic = -Double.MAX_VALUE;
 
 		//Set the properties of this JFrame
-		g.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		g.add(this);
-		g.setSize(1280, 720);
+		g.setSize(1280, 720);//Be nice to people who don't have 1080p displays :P
 		g.setLocationByPlatform(true);
 		g.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
 		g.setVisible(true);
@@ -400,8 +392,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			this.y = y;
 		}
 
-		public boolean equals(Point p) {
-			return (this.x == p.x) && (this.y == p.y);
+		public boolean notEquals(Point p) {
+			return (this.x != p.x) || (this.y != p.y);
 		}
 	}
 
@@ -506,7 +498,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				} else {//Handles going from click to draw mode
 					System.out.println("pls");
 					for(int i = currentPath.size() - 1; i >= 0; i--)
-						if(!currentPath.get(i).equals(lastPoint))
+						if(currentPath.get(i).notEquals(lastPoint))
 							currentPath.remove(i);
 						else
 							break;
@@ -531,7 +523,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				} else {//Handles staying at click mode
 					System.out.println("dank");
 					for(int i = currentPath.size() - 1; i >= 0; i--)
-						if(!currentPath.get(i).equals(lastPoint))
+						if(currentPath.get(i).notEquals(lastPoint))
 							currentPath.remove(i);
 						else
 							break;
