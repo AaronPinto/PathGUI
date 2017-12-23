@@ -3,14 +3,24 @@ package GUIStuff;
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
-import java.awt.datatransfer.*;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.ClipboardOwner;
+import java.awt.datatransfer.StringSelection;
+import java.awt.datatransfer.Transferable;
 import java.awt.event.*;
-import java.awt.geom.*;
-import java.io.*;
+import java.awt.geom.Ellipse2D;
+import java.awt.geom.Line2D;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.text.DecimalFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map.Entry;
-import java.util.stream.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class PathGUITool extends JPanel implements ClipboardOwner {
 	private static final long serialVersionUID = 3205256608145459434L;
@@ -27,6 +37,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	private Point lastPoint = new Point(Double.MAX_VALUE, Double.MAX_VALUE);
 	private LinkedHashMap<String, ArrayList<Point>> paths = new LinkedHashMap<>();
 	private boolean previousDraw = false;
+	private int moveflag = -1;
 
 	/**
 	 * Constructor.
@@ -58,7 +69,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	}
 
 	/**
-	 * Main method which paints the panel and shows the figure.
+	 * The central method which paints the panel and shows the figure and is called every time the GUI updates.
 	 */
 	@Override
 	protected void paintComponent(Graphics g) {
@@ -99,6 +110,16 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	private void plot(Graphics2D g2) {
 		int h = super.getHeight();
 		Color tempC = g2.getColor();
+
+		if(!draw)
+			IntStream.range(0, inputs.size() - 1).forEach(i -> {
+				double x1 = 30 + xScale * inputs.get(i).x, x2 = 30 + xScale * inputs.get(i + 1).x;
+				double y1 = h - 30 - yScale * inputs.get(i).y, y2 = h - 30 - yScale * inputs.get(i + 1).y;
+				g2.setPaint(Color.orange);
+				g2.draw(new Line2D.Double(x1, y1, x2, y2));
+				g2.fill(new Ellipse2D.Double(x1 - 2, y1 - 2, 4, 4));
+				g2.fill(new Ellipse2D.Double(x2 - 2, y2 - 2, 4, 4));
+			});
 
 		IntStream.range(0, currentPath.size() - 1).forEach(i -> {
 			double x1 = 30 + xScale * currentPath.get(i).x, x2 = 30 + xScale * currentPath.get(i + 1).x;
@@ -380,7 +401,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		selectedPath = new MPGen2D(convertPointArray(p), 5.0, 0.02, 3.867227572441874);
 		selectedPath.calculate();
 		if(selectedPath.smoothPath != null)
-			IntStream.range(0, selectedPath.smoothPath.length).forEach(i -> currentPath.add(new Point(selectedPath.smoothPath[i][0], selectedPath.smoothPath[i][1])));
+			IntStream.range(0, selectedPath.smoothPath.length).forEach(i -> currentPath.add(new Point(selectedPath.smoothPath[i][0],
+					selectedPath.smoothPath[i][1])));
 		fig.repaint();
 	}
 
@@ -465,7 +487,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				inputs.clear();
 				currentPath.clear();
 			}
-			if(e.isControlDown() && (e.getExtendedKeyCode() == 68)) {
+			if(e.isControlDown() && (e.getExtendedKeyCode() == 68)) {//CTRL + D
 				draw = !draw;
 				JOptionPane.showMessageDialog(e.getComponent(), String.format("Draw mode set to %b", draw), "Draw Mode Status",
 						JOptionPane.INFORMATION_MESSAGE);
@@ -474,15 +496,44 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	}
 
 	class MouseListener extends MouseAdapter {
-		public void mouseDragged(MouseEvent ev) {
+		public void mouseDragged(MouseEvent e) {
 			//Draw mode essentially allows you to specify a free-flowing path for the robot to follow.
 			//Instead of clicking multiple waypoints, it automatically takes your cursor location as
 			//a waypoint, adds that to the list of waypoints and then updates the GUI.
-			if(draw) updateWaypoints(true);
+			System.out.println(moveflag);
+			if(moveflag != -1) {
+				java.awt.Point p = g.getRootPane().getMousePosition();
+				double x = constrainTo((p.getX() - 30), rect.getWidth()) / xScale;
+				double y = constrainTo(((height - 30) - p.getY()), rect.getHeight()) / yScale;
+				inputs.get(moveflag).x = x;
+				inputs.get(moveflag).y = y;
+				for(int i = currentPath.size() - 1; i >= 0; i--)
+					if(currentPath.get(i).notEquals(lastPoint))
+						currentPath.remove(i);
+					else
+						break;
+				updatePath(inputs);
+			} else if(draw)
+				updateWaypoints(true);
 		}
 
-		public void mouseClicked(MouseEvent ev) {
+		public void mouseClicked(MouseEvent e) {
 			updateWaypoints(false);
+		}
+
+		@Override
+		public void mousePressed(MouseEvent e) {
+			java.awt.Point p = g.getRootPane().getMousePosition();
+			p.x = (int) (constrainTo((p.getX() - 30), rect.getWidth()) / xScale);
+			p.y = (int) (constrainTo(((height - 30) - p.getY()), rect.getHeight()) / yScale);
+			moveflag = -1;
+			for(int i = 0; i < inputs.size(); i++) {
+				for(int j = -2; j < 3; j++)
+					for(int l = -2; l < 3; l++)
+						if(p.equals(new java.awt.Point((int) inputs.get(i).x + j, (int) inputs.get(i).y + l)))
+							moveflag = i;
+			}
+			System.out.println(moveflag);
 		}
 
 		private void updateWaypoints(boolean draw) {
@@ -515,7 +566,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 					selectedPath.calculate();
 					currentPath = new ArrayList<>(previousPath);
 					if(selectedPath.smoothPath != null)
-						IntStream.range(0, selectedPath.smoothPath.length).forEach(i -> currentPath.add(new Point(selectedPath.smoothPath[i][0], selectedPath.smoothPath[i][1])));
+						IntStream.range(0, selectedPath.smoothPath.length).forEach(i -> currentPath.add(new Point(selectedPath.smoothPath[i][0],
+								selectedPath.smoothPath[i][1])));
 					if(selectedPath.smoothPath != null)
 						lastPoint = new Point(selectedPath.smoothPath[0][0], selectedPath.smoothPath[0][1]);
 					System.out.println(lastPoint.x + " " + lastPoint.y);
