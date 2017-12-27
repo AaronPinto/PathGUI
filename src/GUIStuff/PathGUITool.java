@@ -37,7 +37,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	 * Constructor.
 	 */
 	private PathGUITool() {
-		currentPath.add(new PathSegment(false));
 		upperXtic = -Double.MAX_VALUE;
 		upperYtic = -Double.MAX_VALUE;
 
@@ -617,15 +616,17 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 					if(currentPath.size() == 0)
 						currentPath.add(new PathSegment(true));
 					currentPath.get(currentPath.size() - 1).clickPoints.add(new Point(x, y, false));
-					if(currentPath.get(currentPath.size() - 1).clickPoints.size() > 1)
+					if(currentPath.get(currentPath.size() - 1).clickPoints.size() > 1) {
 						currentPath.get(currentPath.size() - 1).clickPoints.get(currentPath.get(currentPath.size() - 1).clickPoints.size() - 2).movable = false;
-					selectedPath = new MPGen2D(convertPointArray(currentPath.get(currentPath.size() - 1).clickPoints), 5.0, 0.02, 3.867227572441874);
-					selectedPath.calculate();
-					if(selectedPath.smoothPath != null)
-						currentPath.get(currentPath.size() - 1).pathSegPoints = convert2DArray(selectedPath.smoothPath);
+						selectedPath = new MPGen2D(convertPointArray(currentPath.get(currentPath.size() - 1).clickPoints), 5.0, 0.02, 3.867227572441874);
+						selectedPath.calculate();
+						if(selectedPath.smoothPath != null)
+							currentPath.get(currentPath.size() - 1).pathSegPoints = convert2DArray(selectedPath.smoothPath);
+					}
 					currentPath.add(new PathSegment(true));
-					currentPath.get(currentPath.size() - 1).pathSegPoints.add(currentPath.get(currentPath.size() - 2).pathSegPoints.get
-							(currentPath.get(currentPath.size() - 2).pathSegPoints.size() - 1));
+					if(currentPath.size() > 2)
+						currentPath.get(currentPath.size() - 1).pathSegPoints.add(currentPath.get(currentPath.size() - 2).pathSegPoints.get
+								(currentPath.get(currentPath.size() - 2).pathSegPoints.size() - 1));
 					fig.repaint();
 				}
 			else {
