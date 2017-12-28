@@ -14,8 +14,10 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.DecimalFormat;
-import java.util.*;
-import java.util.Map.Entry;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.LinkedHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -31,13 +33,9 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	private ArrayList<PathSegment> currentPath = new ArrayList<>();
 	private LinkedHashMap<String, ArrayList<PathSegment>> paths = new LinkedHashMap<>();
 	private boolean previousDraw = false, draw = true, shouldSmooth = false;
-
-	private enum PrevMode {
-		DRAW, CLICKDRAW, DRAWCLICK, CLICK
-	}
-
 	private PrevMode pm;
 	private Object[] moveflag = new Object[]{-1, -1, -1};
+	private FieldGenerator fg = new FieldGenerator();
 
 	/**
 	 * Constructor.
@@ -101,33 +99,45 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		xScale = rekt.getWidth() / 54.3333333;
 		yScale = rekt.getHeight() / 27.0;
 
-		plotFieldElements(g2);
+		fg.plotFieldElements(g2, super.getHeight(), xScale, yScale);
 
 		//plot data
 		plot(g2);
 	}
 
 	private void plotPath(Graphics2D g2, int h, ArrayList<PathSegment> path) {
-		System.out.println("number of path segments: " + path.size());
+		System.out.println("number of path segments: " + path.size() + " " + pm);
 		path.forEach(aPath -> {
 			System.out.println(aPath.pathSegPoints.size() + " " + aPath.clickPoints.size() + " " + aPath.isDrawn);
-			if(aPath.clickPoints != null)
+			if(aPath.clickPoints.size() > 1)
 				IntStream.range(0, aPath.clickPoints.size() - 1).forEach(j -> {
 					double x1 = 30 + xScale * aPath.clickPoints.get(j).x, x2 = 30 + xScale * aPath.clickPoints.get(j + 1).x;
 					double y1 = h - 30 - yScale * aPath.clickPoints.get(j).y, y2 = h - 30 - yScale * aPath.clickPoints.get(j + 1).y;
 					g2.setPaint(Color.magenta);
 					g2.draw(new Line2D.Double(x1, y1, x2, y2));
-					g2.fill(new Ellipse2D.Double(x1 - 2, y1 - 2, 6, 6));
-					g2.fill(new Ellipse2D.Double(x2 - 2, y2 - 2, 6, 6));
+					g2.fill(new Ellipse2D.Double(x1 - 3, y1 - 3, 6, 6));
+					g2.fill(new Ellipse2D.Double(x2 - 3, y2 - 3, 6, 6));
 				});
-			IntStream.range(0, aPath.pathSegPoints.size() - 1).forEach(j -> {
-				double x1 = 30 + xScale * aPath.pathSegPoints.get(j).x, x2 = 30 + xScale * aPath.pathSegPoints.get(j + 1).x;
-				double y1 = h - 30 - yScale * aPath.pathSegPoints.get(j).y, y2 = h - 30 - yScale * aPath.pathSegPoints.get(j + 1).y;
+			else if(aPath.clickPoints.size() == 1) {
+				double x1 = 30 + xScale * aPath.clickPoints.get(0).x, y1 = h - 30 - yScale * aPath.clickPoints.get(0).y;
+				g2.setPaint(Color.magenta);
+				g2.fill(new Ellipse2D.Double(x1 - 3, y1 - 3, 6, 6));
+			}
+
+			if(aPath.pathSegPoints.size() > 1)
+				IntStream.range(0, aPath.pathSegPoints.size() - 1).forEach(j -> {
+					double x1 = 30 + xScale * aPath.pathSegPoints.get(j).x, x2 = 30 + xScale * aPath.pathSegPoints.get(j + 1).x;
+					double y1 = h - 30 - yScale * aPath.pathSegPoints.get(j).y, y2 = h - 30 - yScale * aPath.pathSegPoints.get(j + 1).y;
+					g2.setPaint(Color.green);
+					g2.draw(new Line2D.Double(x1, y1, x2, y2));
+					g2.fill(new Ellipse2D.Double(x1 - 2, y1 - 2, 4, 4));
+					g2.fill(new Ellipse2D.Double(x2 - 2, y2 - 2, 4, 4));
+				});
+			else if(aPath.pathSegPoints.size() == 1) {
+				double x1 = 30 + xScale * aPath.pathSegPoints.get(0).x, y1 = h - 30 - yScale * aPath.pathSegPoints.get(0).y;
 				g2.setPaint(Color.green);
-				g2.draw(new Line2D.Double(x1, y1, x2, y2));
 				g2.fill(new Ellipse2D.Double(x1 - 2, y1 - 2, 4, 4));
-				g2.fill(new Ellipse2D.Double(x2 - 2, y2 - 2, 4, 4));
-			});
+			}
 		});
 	}
 
@@ -139,121 +149,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		//loop through paths and plot each
 		paths.forEach((key, value) -> plotPath(g2, h, value));
 		g2.setColor(tempC);
-	}
-
-	private void plotFieldElements(Graphics2D g2) {
-		HashMap<String, double[][]> elements = new HashMap<>();
-		elements.put("blueAirship", new double[][]{
-				{15.44166, 11.79},//3.42 ft
-				{15.44166, 15.21},//5.9241666666666666666666666666666
-				{12.47926, 16.90583},
-				{9.517493, 15.21},//9.5174933333333333333333333333333
-				{7.788327, 16.185},
-				{9.517493, 15.21},
-				{9.517493, 11.79},//2.9625 , 1.695833333
-				{7.788327, 10.815},
-				{9.517493, 11.79},
-				{12.47926, 10.09417},//1.729166, 0.975
-				{15.44166, 11.79},
-		});
-		elements.put("redAirship", new double[][]{
-				{38.89167, 11.79},//3.42 ft
-				{38.89167, 15.21},//5.9241666666666666666666666666666
-				{41.85407, 16.90583},
-				{44.81584, 15.21},//9.5174933333333333333333333333333
-				{46.545, 16.185},
-				{44.81584, 15.21},
-				{44.81584, 11.79},//2.9625 , 1.695833333
-				{46.545, 10.815},
-				{44.81584, 11.79},
-				{41.85407, 10.09417},//1.7291666, 0.975
-				{38.89167, 11.79},
-		});
-		elements.put("blueAutoLine", new double[][]{
-				{7.77500, 0.0},
-				{7.77500, 27.0},
-				{7.94166, 27.0},
-				{7.94166, 0.0},
-		});
-		elements.put("redAutoLine", new double[][]{
-				{46.55833, 0.0},
-				{46.55833, 27.0},
-				{46.39166, 27.0},
-				{46.39166, 0.0},
-		});
-		elements.put("blueKeyLine", new double[][]{
-				{0.0, 17.7316},//9.0375 from top 9.4425 from left outer line
-				{9.4425, 27.0},//-0.23083 feet inner line -0.24083 feet
-				{9.2016, 27.0},
-				{0.0, 17.9625},
-		});
-		elements.put("redKeyLine", new double[][]{
-				{54.33333, 17.7316},//9.0375 from top 9.4425 from left outer line
-				{44.89083, 27.0},//-0.23083 feet inner line -0.24083 feet
-				{45.13173, 27.0},
-				{54.33333, 17.9625},
-		});
-		elements.put("blueLoadingZoneLine", new double[][]{
-				{54.33333, 7.05083},
-				{40.3025, 0.0},//-0.18666666666666666666666666666667 for y -0.37083333333333333333333333333333 for x
-				{40.67333, 0.0},
-				{54.33333, 6.864163},
-		});
-		elements.put("redLoadingZoneLine", new double[][]{
-				{0.0, 7.05083},
-				{14.03083, 0.0},//-0.18666666666666666666666666666667 for y -0.37083333333333333333333333333333 for x
-				{13.659996, 0.0},
-				{0.0, 6.864163},
-		});
-		elements.put("blueBoilerLine", new double[][]{
-				{3.0814052429175126996746554085053, 27.0},
-				{0.0, 24.051223364526279556078066141698},//-0.0094280904158206 feet for x +0.0553900311929462 feet for y
-				{0.0, 27.0},
-		});
-		elements.put("redBoilerLine", new double[][]{
-				{51.251928090415787300325344591495, 27.0},
-				{54.33333333, 24.051223364526279556078066141698},//-0.0094280904158206 feet for x +0.0553900311929462 feet for y
-				{54.33333333, 27.0},
-		});
-		elements.put("redLoadingLine", new double[][]{
-				{0.0, 3.14583},//3.14583
-				{6.16166, 0.0},
-				{0.0, 0.0},//6.16166
-		});
-		elements.put("blueLoadingLine", new double[][]{
-				{54.33333, 3.14583},//3.14583
-				{48.171673, 0.0},
-				{54.33333, 0.0},//6.16166
-		});
-		int h = super.getHeight();
-
-		for(Entry<String, double[][]> entry : elements.entrySet()) {
-			if(entry.getKey().contains("Line")) {
-				double[] xPoints = new double[entry.getValue().length], yPoints = new double[entry.getValue().length];
-				IntStream.range(0, entry.getValue().length).forEach(i -> {
-					xPoints[i] = 30 + xScale * entry.getValue()[i][0];
-					yPoints[i] = h - 30 - yScale * entry.getValue()[i][1];
-				});
-				Polygon2D p = new Polygon2D(xPoints, yPoints, xPoints.length);
-				if(entry.getKey().contains("blue"))
-					g2.setPaint(Color.blue);
-				else
-					g2.setPaint(Color.red);
-				g2.fill(p);
-				continue;
-			}
-
-			for(int i = 0; i < entry.getValue().length - 1; i++)
-				for(int j = 0; j < entry.getValue()[0].length - 1; j++) {
-					double x1 = 30 + xScale * entry.getValue()[i][j];
-					double x2 = 30 + xScale * entry.getValue()[i + 1][j];
-					double y1 = h - 30 - yScale * entry.getValue()[i][j + 1];
-					double y2 = h - 30 - yScale * entry.getValue()[i + 1][j + 1];
-
-					g2.setPaint(Color.black);
-					g2.draw(new Line2D.Double(x1, y1, x2, y2));
-				}
-		}
 	}
 
 	private void drawYTickRange(Graphics2D g2, Line2D yAxis, double Max) {
@@ -416,6 +311,10 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		return output.toString();
 	}
 
+	private enum PrevMode {
+		DRAW, CLICKDRAW, DRAWCLICK, CLICK, UNDO
+	}
+
 	/**
 	 * A path segment can either be drawn or clicked and we need to keep track of that for the different keyboard shortcuts
 	 * It also needs to store the points of a path segment and if the path segment is clicked, then it needs to store those waypoints as well
@@ -489,8 +388,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 
 	class KeyboardListener extends KeyAdapter {
 		public void keyPressed(KeyEvent e) {
-			System.out.println(e.isControlDown() + " " + e.getExtendedKeyCode());
 			if(e.isControlDown() && e.getExtendedKeyCode() == 90) {//CTRL + Z
+				System.out.println(e.isControlDown() + " " + e.getExtendedKeyCode());
 				if(currentPath.size() > 0) {
 					undoRedoCounter++;
 					System.out.println(currentPath.get(currentPath.size() - 1).pathSegPoints.size());
@@ -507,6 +406,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 					if(currentPath.get(currentPath.size() - 1).pathSegPoints.size() == 0)
 						currentPath.remove(currentPath.size() - 1);
 					fig.repaint();
+					pm = PrevMode.UNDO;
 				} else {
 					JOptionPane.showConfirmDialog(e.getComponent(), "No More Undos!", "", JOptionPane.DEFAULT_OPTION);
 				}
@@ -637,10 +537,54 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			if(currentPath.size() == 0)
 				currentPath.add(new PathSegment(false));
 			currentPath.get(currentPath.size() - 1).clickPoints.add(new Point(x, y));
+			genPath();
+		}
+
+		private void genPath() {
 			selectedPath = new MPGen2D(convertPointArray(currentPath.get(currentPath.size() - 1).clickPoints), 5.0, 0.02, 3.867227572441874);
 			selectedPath.calculate();
 			if(selectedPath.smoothPath != null)
 				currentPath.get(currentPath.size() - 1).pathSegPoints = convert2DArray(selectedPath.smoothPath);
+		}
+
+		private void simDrawClick(double x, double y) {
+			if(currentPath.size() > 0 && currentPath.get(currentPath.size() - 1).pathSegPoints.size() == 0)
+				currentPath.remove(currentPath.size() - 1);
+			currentPath.add(new PathSegment(false));
+			if(!smoothTings(x, y))
+				if(currentPath.size() > 1 && currentPath.get(currentPath.size() - 2).pathSegPoints.size() > 0) {
+					int numToRemove = (int) constrainTo(currentPath.get(currentPath.size() - 2).pathSegPoints.size(), 10);
+					if(!currentPath.get(currentPath.size() - 2).isDrawn) {
+						if(currentPath.get(currentPath.size() - 1).clickPoints.size() == 0 && currentPath.get(currentPath.size() - 1).pathSegPoints.size() == 0 &&
+								!currentPath.get(currentPath.size() - 1).isDrawn) {
+							currentPath.remove(currentPath.size() - 1);
+							currentPath.get(currentPath.size() - 1).clickPoints.add(new Point(x, y));
+							genPath();
+						} else {
+							currentPath.get(currentPath.size() - 2).clickPoints.add(new Point(x, y));
+							selectedPath = new MPGen2D(convertPointArray(currentPath.get(currentPath.size() - 2).clickPoints), 5.0, 0.02, 3.867227572441874);
+							selectedPath.calculate();
+							if(selectedPath.smoothPath != null)
+								currentPath.get(currentPath.size() - 1).pathSegPoints = convert2DArray(selectedPath.smoothPath);
+						}
+					} else {
+						if(numToRemove > 1 && currentPath.get(currentPath.size() - 2).isDrawn)
+							currentPath.get(currentPath.size() - 1).clickPoints.add(new Point(currentPath.get(currentPath.size() - 2).
+									pathSegPoints.get(currentPath.get(currentPath.size() - 2).pathSegPoints.size() - numToRemove), false));
+						currentPath.get(currentPath.size() - 1).clickPoints.add(new Point(currentPath.get(currentPath.size() - 2).
+								pathSegPoints.get(currentPath.get(currentPath.size() - 2).pathSegPoints.size() - 1), false));
+						System.out.println("WEWWWWWWWWWWWWWWW");
+						if(currentPath.get(currentPath.size() - 2).isDrawn)
+							for(int i = 0; i < numToRemove - 1; i++)
+								currentPath.get(currentPath.size() - 2).pathSegPoints.remove(currentPath.get(currentPath.size() - 2).pathSegPoints.size() - 1);
+						if(numToRemove == 1 && currentPath.get(currentPath.size() - 2).pathSegPoints.size() == 1 &&
+								currentPath.get(currentPath.size() - 2).clickPoints.size() == 1 && !currentPath.get(currentPath.size() - 2).isDrawn) {
+							currentPath.remove(currentPath.size() - 2);
+						}
+						currentPath.get(currentPath.size() - 1).clickPoints.add(new Point(x, y));
+						genPath();
+					}
+				}
 		}
 
 		private void updateWaypoints(boolean draw) {
@@ -666,6 +610,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 						currentPath.add(new PathSegment(true));
 						if(currentPath.size() > 1)
 							shouldSmooth = true;
+					} else if(pm == PrevMode.UNDO) {
+						simDrawClick(x, y);
 					} else {
 						if(currentPath.size() == 0)
 							currentPath.add(new PathSegment(false));
@@ -673,10 +619,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 						System.out.println(currentPath.get(currentPath.size() - 1).clickPoints.size());
 						if(currentPath.get(currentPath.size() - 1).clickPoints.size() > 1) {
 							currentPath.get(currentPath.size() - 1).clickPoints.get(currentPath.get(currentPath.size() - 1).clickPoints.size() - 2).movable = false;
-							selectedPath = new MPGen2D(convertPointArray(currentPath.get(currentPath.size() - 1).clickPoints), 5.0, 0.02, 3.867227572441874);
-							selectedPath.calculate();
-							if(selectedPath.smoothPath != null)
-								currentPath.get(currentPath.size() - 1).pathSegPoints = convert2DArray(selectedPath.smoothPath);
+							genPath();
 						}
 						currentPath.add(new PathSegment(true));
 						if(currentPath.size() > 1)
@@ -693,31 +636,16 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 							currentPath.remove(currentPath.size() - 1);
 						simClick(x, y);
 					} else {
-						if(currentPath.size() > 0 && currentPath.get(currentPath.size() - 1).pathSegPoints.size() == 0)
-							currentPath.remove(currentPath.size() - 1);
-						currentPath.add(new PathSegment(false));
-						if(!smoothTings(x, y))
-							if(currentPath.size() > 1 && currentPath.get(currentPath.size() - 2).pathSegPoints.size() > 0) {
-								int numToRemove = (int) constrainTo(currentPath.get(currentPath.size() - 2).pathSegPoints.size(), 10);
-								currentPath.get(currentPath.size() - 1).clickPoints.add(new Point(currentPath.get(currentPath.size() - 2).
-										pathSegPoints.get(currentPath.get(currentPath.size() - 2).pathSegPoints.size() - numToRemove), false));
-								currentPath.get(currentPath.size() - 1).clickPoints.add(new Point(currentPath.get(currentPath.size() - 2).
-										pathSegPoints.get(currentPath.get(currentPath.size() - 2).pathSegPoints.size() - 1), false));
-								System.out.println("WEWWWWWWWWWWWWWWW");
-								for(int i = 0; i < numToRemove - 1; i++)
-									currentPath.get(currentPath.size() - 2).pathSegPoints.remove(currentPath.get(currentPath.size() - 2).pathSegPoints.size() - 1);
-							}
-						currentPath.get(currentPath.size() - 1).clickPoints.add(new Point(x, y));
-						selectedPath = new MPGen2D(convertPointArray(currentPath.get(currentPath.size() - 1).clickPoints), 5.0, 0.02, 3.867227572441874);
-						selectedPath.calculate();
-						if(selectedPath.smoothPath != null)
-							currentPath.get(currentPath.size() - 1).pathSegPoints = convert2DArray(selectedPath.smoothPath);
+						simDrawClick(x, y);
 					}
 					fig.repaint();
 					pm = PrevMode.DRAWCLICK;
 				} else {//Handles staying at click mode
 					System.out.println("dank");
-					simClick(x, y);
+					if(pm == PrevMode.UNDO) {
+						simDrawClick(x, y);
+					} else
+						simClick(x, y);
 					fig.repaint();
 					pm = PrevMode.CLICK;
 				}

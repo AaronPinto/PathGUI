@@ -34,7 +34,10 @@ public class MPGen2D {
 	 * @param trackWidth double
 	 */
 	MPGen2D(double[][] waypoint, double time, double tStep, double trackWidth) {
-		if(waypoint.length > 0)
+		if(waypoint.length == 1) {
+			smoothPath = waypoint;
+			return;
+		} else if(waypoint.length > 0)
 			origPath = doubleArrayDeepCopy(waypoint);
 		else return;
 
