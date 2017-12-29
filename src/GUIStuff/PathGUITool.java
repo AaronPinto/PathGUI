@@ -448,44 +448,50 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			int mf1 = (int) moveflag[1], mf2 = (int) moveflag[2];
 			if(mf1 > -1) {
 				java.awt.Point p = g.getRootPane().getMousePosition();
-				double x = constrainTo((p.getX() - 30), rekt.getWidth()) / xScale;
-				double y = constrainTo(((height - 30) - p.getY()), rekt.getHeight()) / yScale;
-				if(moveflag[0].equals("current")) {
-					currentPath.get(mf1).clickPoints.get(mf2).x = x;
-					currentPath.get(mf1).clickPoints.get(mf2).y = y;
-					selectedPath = new MPGen2D(convertPointArray(currentPath.get(mf1).clickPoints), 5.0, 0.02, 3.867227572441874);
-					selectedPath.calculate();
-					if(selectedPath.smoothPath != null)
-						currentPath.get(mf1).pathSegPoints = convert2DArray(selectedPath.smoothPath);
-				} else {
-					paths.get(moveflag[0]).get(mf1).clickPoints.get(mf2).x = x;
-					paths.get(moveflag[0]).get(mf1).clickPoints.get(mf2).y = y;
-					selectedPath = new MPGen2D(convertPointArray(paths.get(moveflag[0]).get(mf1).clickPoints), 5.0, 0.02, 3.867227572441874);
-					selectedPath.calculate();
-					if(selectedPath.smoothPath != null)
-						paths.get(moveflag[0]).get(mf1).pathSegPoints = convert2DArray(selectedPath.smoothPath);
-				}
-				fig.repaint();
+				if(p != null) {
+					double x = constrainTo((p.getX() - 30), rekt.getWidth()) / xScale;
+					double y = constrainTo(((height - 30) - p.getY()), rekt.getHeight()) / yScale;
+					if(moveflag[0].equals("current")) {
+						currentPath.get(mf1).clickPoints.get(mf2).x = x;
+						currentPath.get(mf1).clickPoints.get(mf2).y = y;
+						selectedPath = new MPGen2D(convertPointArray(currentPath.get(mf1).clickPoints), 5.0, 0.02, 3.867227572441874);
+						selectedPath.calculate();
+						if(selectedPath.smoothPath != null)
+							currentPath.get(mf1).pathSegPoints = convert2DArray(selectedPath.smoothPath);
+					} else {
+						paths.get(moveflag[0]).get(mf1).clickPoints.get(mf2).x = x;
+						paths.get(moveflag[0]).get(mf1).clickPoints.get(mf2).y = y;
+						selectedPath = new MPGen2D(convertPointArray(paths.get(moveflag[0]).get(mf1).clickPoints), 5.0, 0.02, 3.867227572441874);
+						selectedPath.calculate();
+						if(selectedPath.smoothPath != null)
+							paths.get(moveflag[0]).get(mf1).pathSegPoints = convert2DArray(selectedPath.smoothPath);
+					}
+					fig.repaint();
+				} else
+					JOptionPane.showMessageDialog(e.getComponent(), "Please move your cursor back into the window!", "Boundary Monitor", JOptionPane.ERROR_MESSAGE);
 			} else if(draw && mf1 > -2)
-				updateWaypoints(true);
+				updateWaypoints(true, e);
 		}
 
 		public void mouseClicked(MouseEvent e) {
-			updateWaypoints(false);
+			updateWaypoints(false, e);
 		}
 
 		@Override
 		public void mousePressed(MouseEvent e) {
 			java.awt.Point p = g.getRootPane().getMousePosition();
-			p.x = (int) constrainTo((p.getX() - 30), rekt.getWidth());
-			p.y = (int) constrainTo(((height - 30) - p.getY()), rekt.getHeight());
-			moveflag = new Object[]{-1, -1, -1};
-			//Check the current path to see if the clicked point is a part of it and if it isn't then check all the other paths
-			//Only check the other paths if you can;t find it in the current one to save time and resources instead of needlessly
-			//Searching through extra paths
-			if(!findClickedPoint("current", currentPath, e, p))
-				paths.forEach((key, value) -> findClickedPoint(key, value, e, p));
-			System.out.println(moveflag[0]);
+			if(p != null) {
+				p.x = (int) constrainTo((p.getX() - 30), rekt.getWidth());
+				p.y = (int) constrainTo(((height - 30) - p.getY()), rekt.getHeight());
+				moveflag = new Object[]{-1, -1, -1};
+				//Check the current path to see if the clicked point is a part of it and if it isn't then check all the other paths
+				//Only check the other paths if you can;t find it in the current one to save time and resources instead of needlessly
+				//Searching through extra paths
+				if(!findClickedPoint("current", currentPath, e, p))
+					paths.forEach((key, value) -> findClickedPoint(key, value, e, p));
+				System.out.println(moveflag[0]);
+			} else
+				JOptionPane.showMessageDialog(e.getComponent(), "Please move your cursor back into the window!", "Boundary Monitor", JOptionPane.ERROR_MESSAGE);
 		}
 
 		private boolean findClickedPoint(String name, ArrayList<PathSegment> path, MouseEvent e, java.awt.Point p) {
@@ -557,10 +563,11 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 					if(!currentPath.get(currentPath.size() - 2).isDrawn) {
 						if(currentPath.get(currentPath.size() - 1).clickPoints.size() == 0 && currentPath.get(currentPath.size() - 1).pathSegPoints.size() == 0 &&
 								!currentPath.get(currentPath.size() - 1).isDrawn) {
+							System.out.println("normal click sorta");
 							currentPath.remove(currentPath.size() - 1);
-							currentPath.get(currentPath.size() - 1).clickPoints.add(new Point(x, y));
-							genPath();
+							simClick(x, y);
 						} else {
+							System.out.println("blah");
 							currentPath.get(currentPath.size() - 2).clickPoints.add(new Point(x, y));
 							selectedPath = new MPGen2D(convertPointArray(currentPath.get(currentPath.size() - 2).clickPoints), 5.0, 0.02, 3.867227572441874);
 							selectedPath.calculate();
@@ -587,73 +594,81 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				}
 		}
 
-		private void updateWaypoints(boolean draw) {
+		private void updateWaypoints(boolean draw, MouseEvent e) {
 			//Get the mouse position (x, y) on the window, constrain it to the field borders and convert it to feet.
 			java.awt.Point p = g.getRootPane().getMousePosition();
-			double x = constrainTo((p.getX() - 30), rekt.getWidth()) / xScale;
-			double y = constrainTo(((height - 30) - p.getY()), rekt.getHeight()) / yScale;
-			if(draw)
-				if(previousDraw) {//Handles staying at draw mode
-					System.out.println("spicy");
-					if(currentPath.size() == 0)
-						currentPath.add(new PathSegment(true));
-					smoothTings(x, y);
-					currentPath.get(currentPath.size() - 1).pathSegPoints.add(new Point(x, y));
-					fig.repaint();
-					pm = PrevMode.DRAW;
-				} else {//Handles going from click to draw mode
-					System.out.println("plsssssssssssssssssssssssssssssssssssssssssssss");
-					if(pm == PrevMode.DRAWCLICK) {
-						if(currentPath.size() > 0 && currentPath.get(currentPath.size() - 1).pathSegPoints.size() == 0)
-							currentPath.remove(currentPath.size() - 1);
-						simClick(x, y);
-						currentPath.add(new PathSegment(true));
-						if(currentPath.size() > 1)
-							shouldSmooth = true;
-					} else if(pm == PrevMode.UNDO) {
-						simDrawClick(x, y);
-					} else {
+			if(p != null) {
+				double x = constrainTo((p.getX() - 30), rekt.getWidth()) / xScale;
+				double y = constrainTo(((height - 30) - p.getY()), rekt.getHeight()) / yScale;
+				if(draw)
+					if(previousDraw) {//Handles staying at draw mode
+						System.out.println("spicy");
 						if(currentPath.size() == 0)
-							currentPath.add(new PathSegment(false));
-						currentPath.get(currentPath.size() - 1).clickPoints.add(new Point(x, y, false));
-						System.out.println(currentPath.get(currentPath.size() - 1).clickPoints.size());
-						if(currentPath.get(currentPath.size() - 1).clickPoints.size() > 1) {
-							currentPath.get(currentPath.size() - 1).clickPoints.get(currentPath.get(currentPath.size() - 1).clickPoints.size() - 2).movable = false;
-							genPath();
+							currentPath.add(new PathSegment(true));
+						if(!currentPath.get(currentPath.size() - 1).isDrawn && currentPath.size() > 1) {
+							currentPath.add(new PathSegment(true));
+							currentPath.get(currentPath.size() - 1).pathSegPoints.add(currentPath.get(currentPath.size() - 2).
+									pathSegPoints.get(currentPath.get(currentPath.size() - 2).pathSegPoints.size() - 1));
 						}
-						currentPath.add(new PathSegment(true));
-						if(currentPath.size() > 1)
-							shouldSmooth = true;
+						smoothTings(x, y);
+						currentPath.get(currentPath.size() - 1).pathSegPoints.add(new Point(x, y));
+						fig.repaint();
+						pm = PrevMode.DRAW;
+					} else {//Handles going from click to draw mode
+						System.out.println("plsssssssssssssssssssssssssssssssssssssssssssss");
+						if(pm == PrevMode.DRAWCLICK) {
+							if(currentPath.size() > 0 && currentPath.get(currentPath.size() - 1).pathSegPoints.size() == 0)
+								currentPath.remove(currentPath.size() - 1);
+							simClick(x, y);
+							currentPath.add(new PathSegment(true));
+							if(currentPath.size() > 1)
+								shouldSmooth = true;
+						} else if(pm == PrevMode.UNDO) {
+							simDrawClick(x, y);
+						} else {
+							if(currentPath.size() == 0)
+								currentPath.add(new PathSegment(false));
+							currentPath.get(currentPath.size() - 1).clickPoints.add(new Point(x, y, false));
+							System.out.println(currentPath.get(currentPath.size() - 1).clickPoints.size());
+							if(currentPath.get(currentPath.size() - 1).clickPoints.size() > 1) {
+								currentPath.get(currentPath.size() - 1).clickPoints.get(currentPath.get(currentPath.size() - 1).clickPoints.size() - 2).movable = false;
+								genPath();
+							}
+							currentPath.add(new PathSegment(true));
+							if(currentPath.size() > 1)
+								shouldSmooth = true;
+						}
+						fig.repaint();
+						pm = PrevMode.CLICKDRAW;
 					}
-					fig.repaint();
-					pm = PrevMode.CLICKDRAW;
-				}
-			else {
-				if(previousDraw) {//Handles going from draw to click mode
-					System.out.println("SAJEGNJKGNJKASN");
-					if(pm == PrevMode.CLICKDRAW) {
-						if(currentPath.size() > 0 && currentPath.get(currentPath.size() - 1).pathSegPoints.size() == 0)
-							currentPath.remove(currentPath.size() - 1);
-						simClick(x, y);
-					} else {
-						simDrawClick(x, y);
+				else {
+					if(previousDraw) {//Handles going from draw to click mode
+						System.out.println("SAJEGNJKGNJKASN");
+						if(pm == PrevMode.CLICKDRAW) {
+							if(currentPath.size() > 0 && currentPath.get(currentPath.size() - 1).pathSegPoints.size() == 0)
+								currentPath.remove(currentPath.size() - 1);
+							simClick(x, y);
+						} else {
+							simDrawClick(x, y);
+						}
+						fig.repaint();
+						pm = PrevMode.DRAWCLICK;
+					} else {//Handles staying at click mode
+						System.out.println("dank");
+						if(pm == PrevMode.UNDO) {
+							simDrawClick(x, y);
+						} else
+							simClick(x, y);
+						fig.repaint();
+						pm = PrevMode.CLICK;
 					}
-					fig.repaint();
-					pm = PrevMode.DRAWCLICK;
-				} else {//Handles staying at click mode
-					System.out.println("dank");
-					if(pm == PrevMode.UNDO) {
-						simDrawClick(x, y);
-					} else
-						simClick(x, y);
-					fig.repaint();
-					pm = PrevMode.CLICK;
 				}
-			}
-			//Every time a new point is added, clear the undo/redo buffers and re-add all the points in the input list to them
-			undoRedoCounter = 0;
-			System.out.println(previousDraw + " " + draw);
-			previousDraw = draw;
+				//Every time a new point is added, clear the undo/redo buffers and re-add all the points in the input list to them
+				undoRedoCounter = 0;
+				System.out.println(previousDraw + " " + draw);
+				previousDraw = draw;
+			} else
+				JOptionPane.showMessageDialog(e.getComponent(), "Please move your cursor back into the window!", "Boundary Monitor", JOptionPane.ERROR_MESSAGE);
 		}
 	}
 }
