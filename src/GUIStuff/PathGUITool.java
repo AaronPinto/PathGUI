@@ -319,7 +319,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	 * A path segment can either be drawn or clicked and we need to keep track of that for the different keyboard shortcuts
 	 * It also needs to store the points of a path segment and if the path segment is clicked, then it needs to store those waypoints as well
 	 */
-	private static class PathSegment {
+	static class PathSegment {
 		static int numPathSeg;
 		boolean isDrawn;
 		ArrayList<Point> pathSegPoints;
@@ -591,7 +591,9 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 						currentPath.get(currentPath.size() - 1).clickPoints.add(new Point(x, y));
 						genPath();
 					}
-				}
+				} else if(currentPath.size() == 1 && currentPath.get(currentPath.size() - 1).clickPoints.size() == 0 &&
+						currentPath.get(currentPath.size() - 1).pathSegPoints.size() == 0 && !currentPath.get(currentPath.size() - 1).isDrawn)
+					simClick(x, y);
 		}
 
 		private void updateWaypoints(boolean draw, MouseEvent e) {
