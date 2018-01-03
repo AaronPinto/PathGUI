@@ -408,6 +408,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			if(e.isControlDown() && e.getExtendedKeyCode() == 90) {//CTRL + Z
 				if(!currentPath.isEmpty()) {
 					System.out.println(currentPath.get(currentPath.size() - 1).pathSegPoints.size());
+					if(currentPath.get(currentPath.size() - 1).pathSegPoints.isEmpty())
+						currentPath.remove(currentPath.size() - 1);
 					if(!currentPath.get(currentPath.size() - 1).pathSegPoints.isEmpty()) {
 						if(currentPath.get(currentPath.size() - 1).isDrawn) {
 							dank.push(currentPath.get(currentPath.size() - 1).pathSegPoints.remove(currentPath.get(currentPath.size() - 1).pathSegPoints.size() - 1));
@@ -594,12 +596,15 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				System.out.println("its ya boi");
 				if(currentPath.get(currentPath.size() - 2).clickPoints.size() > 1)
 					currentPath.get(currentPath.size() - 2).clickPoints.get(currentPath.get(currentPath.size() - 2).clickPoints.size() - 1).movable = false;
-				currentPath.get(currentPath.size() - 2).clickPoints.add(new Point(x, y, false));
-				selectedPath = new MPGen2D(convertPointArray(currentPath.get(currentPath.size() - 2).clickPoints), 5.0, 0.02, 3.867227572441874);
-				selectedPath.calculate();
-				if(selectedPath.smoothPath != null)
-					currentPath.get(currentPath.size() - 2).pathSegPoints = convert2DArray(selectedPath.smoothPath);
-				return true;
+				if(currentPath.get(currentPath.size() - 1).isDrawn) {
+					System.out.println("its actually ya boi");
+					currentPath.get(currentPath.size() - 2).clickPoints.add(new Point(x, y, false));
+					selectedPath = new MPGen2D(convertPointArray(currentPath.get(currentPath.size() - 2).clickPoints), 5.0, 0.02, 3.867227572441874);
+					selectedPath.calculate();
+					if(selectedPath.smoothPath != null)
+						currentPath.get(currentPath.size() - 2).pathSegPoints = convert2DArray(selectedPath.smoothPath);
+					return true;
+				}
 			}
 			return false;
 		}
