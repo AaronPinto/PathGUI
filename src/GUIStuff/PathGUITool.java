@@ -404,8 +404,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 
 	class KeyboardListener extends KeyAdapter {
 		public void keyPressed(KeyEvent e) {
+			System.out.println(e.isControlDown() + " " + e.getExtendedKeyCode());
 			if(e.isControlDown() && e.getExtendedKeyCode() == 90) {//CTRL + Z
-				System.out.println(e.isControlDown() + " " + e.getExtendedKeyCode());
 				if(!currentPath.isEmpty()) {
 					System.out.println(currentPath.get(currentPath.size() - 1).pathSegPoints.size());
 					if(!currentPath.get(currentPath.size() - 1).pathSegPoints.isEmpty()) {
@@ -427,13 +427,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 					JOptionPane.showConfirmDialog(e.getComponent(), "No More Undos!", "Undo Status", JOptionPane.DEFAULT_OPTION);
 			}
 			if(e.isControlDown() && e.getExtendedKeyCode() == 89) {//CTRL + Y
-				if(!currentPath.isEmpty() && !dank.empty())
-					if(currentPath.get(currentPath.size() - 1).isDrawn)
-						currentPath.get(currentPath.size() - 1).pathSegPoints.add(dank.pop());
-					else
-						System.out.println("clicked point redo is not currently supported srry hannah :P and " +
-								"you'll never see this unless u read through the changes because this never actually prints out XD");
-				else
 					JOptionPane.showConfirmDialog(e.getComponent(), "No More Redos!", "Redo Status", JOptionPane.DEFAULT_OPTION);
 				fig.repaint();
 			}
