@@ -27,11 +27,11 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			yTickYMax = 0, yTickYMin = 0, x1vert, rektWidth, rektHeight;
 	private ArrayList<PathSegment> currentPath = new ArrayList<>();
 	private LinkedHashMap<String, ArrayList<PathSegment>> paths = new LinkedHashMap<>();
-	private boolean previousDraw = false, draw = true, shouldSmooth = false;
+	private boolean previousDraw = false, draw = true, shouldSmooth = false, firstUndoRedo = false;
 	private PrevMode pm;
 	private Object[] moveflag = new Object[]{-1, -1, -1};
 	private FieldGenerator fg = new FieldGenerator();
-	private Stack<Point> dank = new Stack<>();
+	private Deque<PathSegment> dank = new ArrayDeque<>();//add() adds last, peek()
 
 	/**
 	 * Constructor.
@@ -327,8 +327,15 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		output.append("};\n");
 	}
 
+	private void genPath() {
+		selectedPath = new MPGen2D(convertPointArray(currentPath.get(currentPath.size() - 1).clickPoints), 5.0, 0.02, 3.867227572441874);
+		selectedPath.calculate();
+		if(selectedPath.smoothPath != null)
+			currentPath.get(currentPath.size() - 1).pathSegPoints = convert2DArray(selectedPath.smoothPath);
+	}
+
 	private enum PrevMode {
-		DRAW, CLICKDRAW, DRAWCLICK, CLICK, UNDO
+		DRAW, CLICKDRAW, DRAWCLICK, CLICK, UNDO, REDO
 	}
 
 	/**
@@ -336,7 +343,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	 * It also needs to store the points of a path segment and if the path segment is clicked, then it needs to store those waypoints as well
 	 */
 	static class PathSegment {
-		static int numPathSeg;
 		boolean isDrawn;
 		ArrayList<Point> pathSegPoints;
 		ArrayList<Point> clickPoints;
@@ -345,7 +351,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			this.isDrawn = isDrawn;
 			this.pathSegPoints = new ArrayList<>();
 			this.clickPoints = new ArrayList<>(0);
-			numPathSeg++;
 		}
 	}
 
@@ -369,6 +374,11 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			this.x = p.x;
 			this.y = p.y;
 			this.movable = move;
+		}
+
+		@Override
+		public String toString() {
+			return x + ", " + y + ", " + movable;
 		}
 	}
 
@@ -403,49 +413,107 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	}
 
 	class KeyboardListener extends KeyAdapter {
+		private void addPathSegment() {
+			if(!currentPath.isEmpty())
+				dank.add(new PathSegment(currentPath.get(currentPath.size() - 1).isDrawn));
+		}
+
+		private void removeEmptyPaths() {
+			if(currentPath.get(currentPath.size() - 1).pathSegPoints.isEmpty()) {
+				currentPath.remove(currentPath.size() - 1);
+				addPathSegment();
+			} else if(currentPath.get(currentPath.size() - 1).clickPoints.isEmpty() && !currentPath.get(currentPath.size() - 1).isDrawn) {
+				currentPath.remove(currentPath.size() - 1);
+				addPathSegment();
+			}
+		}
+
 		public void keyPressed(KeyEvent e) {
 			System.out.println(e.isControlDown() + " " + e.getExtendedKeyCode());
-			if(e.isControlDown() && e.getExtendedKeyCode() == 90) {//CTRL + Z
-				if(!currentPath.isEmpty()) {
-					System.out.println(currentPath.get(currentPath.size() - 1).pathSegPoints.size());
-					if(currentPath.get(currentPath.size() - 1).pathSegPoints.isEmpty())
-						currentPath.remove(currentPath.size() - 1);
-					if(!currentPath.get(currentPath.size() - 1).pathSegPoints.isEmpty()) {
-						if(currentPath.get(currentPath.size() - 1).isDrawn) {
-							dank.push(currentPath.get(currentPath.size() - 1).pathSegPoints.remove(currentPath.get(currentPath.size() - 1).pathSegPoints.size() - 1));
-						} else {
-							currentPath.get(currentPath.size() - 1).clickPoints.remove(currentPath.get(currentPath.size() - 1).clickPoints.size() - 1);
-							selectedPath = new MPGen2D(convertPointArray(currentPath.get(currentPath.size() - 1).clickPoints), 5.0, 0.02, 3.867227572441874);
-							selectedPath.calculate();
-							currentPath.get(currentPath.size() - 1).pathSegPoints = convert2DArray(selectedPath.smoothPath);
-							fig.repaint();
+			if(e.isControlDown()) {
+				if(e.getExtendedKeyCode() == 90) {//CTRL + Z
+					if(!currentPath.isEmpty()) {
+						System.out.println(currentPath.get(currentPath.size() - 1).pathSegPoints.size());
+						removeEmptyPaths();
+						if(!currentPath.get(currentPath.size() - 1).pathSegPoints.isEmpty()) {
+							if(firstUndoRedo || dank.isEmpty()) {
+								firstUndoRedo = false;
+								addPathSegment();
+							}
+							if(currentPath.get(currentPath.size() - 1).isDrawn) {
+								dank.peekLast().pathSegPoints.add(currentPath.get(currentPath.size() - 1).pathSegPoints.
+										remove(currentPath.get(currentPath.size() - 1).pathSegPoints.size() - 1));
+							} else {
+								dank.peekLast().clickPoints.add(currentPath.get(currentPath.size() - 1).clickPoints.
+										remove(currentPath.get(currentPath.size() - 1).clickPoints.size() - 1));
+								genPath();
+								fig.repaint();
+							}
 						}
-					}
-					if(currentPath.get(currentPath.size() - 1).pathSegPoints.isEmpty())
-						currentPath.remove(currentPath.size() - 1);
+						removeEmptyPaths();
+
+						for(PathSegment ps : dank) {
+							System.out.println("new path segment");
+							if(ps.isDrawn)
+								ps.pathSegPoints.forEach(System.out::println);
+							else
+								ps.clickPoints.forEach(System.out::println);
+						}
+
+						fig.repaint();
+						pm = PrevMode.UNDO;
+					} else
+						JOptionPane.showConfirmDialog(e.getComponent(), "No More Undos!", "Undo Status", JOptionPane.DEFAULT_OPTION);
+				}
+				if(e.getExtendedKeyCode() == 89) {//CTRL + Y
+					if(!dank.isEmpty()) {
+						/*
+						  so u want to add a path segment to the current path if the current path's current path segment
+						  isn't of the same type as the one in the buffer and ofc if the buffer isn't empty
+						 */
+						if(!dank.peekLast().clickPoints.isEmpty() && !dank.peekLast().isDrawn && (currentPath.isEmpty() || currentPath.get(currentPath.size() - 1).isDrawn))
+							currentPath.add(new PathSegment(false));
+						else if(!dank.peekLast().pathSegPoints.isEmpty() && dank.peekLast().isDrawn && (currentPath.isEmpty() || !currentPath.get(currentPath.size() - 1).isDrawn))
+							currentPath.add(new PathSegment(true));
+
+						if(currentPath.get(currentPath.size() - 1).isDrawn)
+							currentPath.get(currentPath.size() - 1).pathSegPoints.add(dank.peekLast().pathSegPoints.remove(dank.peekLast().pathSegPoints.size() - 1));
+						else {
+							currentPath.get(currentPath.size() - 1).clickPoints.add(dank.peekLast().clickPoints.remove(dank.peekLast().clickPoints.size() - 1));
+							genPath();
+						}
+
+						if(dank.peekLast().pathSegPoints.isEmpty() && dank.peekLast().clickPoints.isEmpty())
+							dank.removeLast();
+
+						for(PathSegment ps : dank) {
+							System.out.println("new path segment");
+							if(ps.isDrawn)
+								ps.pathSegPoints.forEach(System.out::println);
+							else
+								ps.clickPoints.forEach(System.out::println);
+						}
+
+						fig.repaint();
+						pm = PrevMode.REDO;
+					} else
+						JOptionPane.showConfirmDialog(e.getComponent(), "No More Redos!", "Redo Status", JOptionPane.DEFAULT_OPTION);
+				}
+				if(e.getExtendedKeyCode() == 67) {//CTRL + C, Keycode for S = 83
+					Clipboard c = Toolkit.getDefaultToolkit().getSystemClipboard();
+					c.setContents(new StringSelection(output2DArray()), fig);
+					JOptionPane.showConfirmDialog(e.getComponent(), "Waypoints copied to clipboard!", "Points Copier", JOptionPane.DEFAULT_OPTION);
+				}
+				if(e.getExtendedKeyCode() == 78 && !currentPath.isEmpty()) {//CTRL + N
+					paths.put(String.format("path%d", paths.size() + 1), currentPath);
+					currentPath = new ArrayList<>();
 					fig.repaint();
-					pm = PrevMode.UNDO;
-				} else
-					JOptionPane.showConfirmDialog(e.getComponent(), "No More Undos!", "Undo Status", JOptionPane.DEFAULT_OPTION);
-			}
-			if(e.isControlDown() && e.getExtendedKeyCode() == 89) {//CTRL + Y
-					JOptionPane.showConfirmDialog(e.getComponent(), "No More Redos!", "Redo Status", JOptionPane.DEFAULT_OPTION);
-				fig.repaint();
-			}
-			if(e.isControlDown() && e.getExtendedKeyCode() == 67) {//CTRL + C, Keycode for S = 83
-				Clipboard c = Toolkit.getDefaultToolkit().getSystemClipboard();
-				c.setContents(new StringSelection(output2DArray()), fig);
-				JOptionPane.showConfirmDialog(e.getComponent(), "Waypoints copied to clipboard!", "Points Copier", JOptionPane.DEFAULT_OPTION);
-			}
-			if(e.isControlDown() && e.getExtendedKeyCode() == 78 && !currentPath.isEmpty()) {//CTRL + N
-				paths.put(String.format("path%d", paths.size() + 1), currentPath);
-				currentPath = new ArrayList<>();
-				fig.repaint();
-			}
-			if(e.isControlDown() && e.getExtendedKeyCode() == 68) {//CTRL + D
-				draw = !draw;
-				JOptionPane.showMessageDialog(e.getComponent(), String.format("Draw mode set to %b", draw), "Draw Mode Status",
-						JOptionPane.INFORMATION_MESSAGE);
+				}
+				if(e.getExtendedKeyCode() == 68) {//CTRL + D
+					draw = !draw;
+					JOptionPane.showMessageDialog(e.getComponent(), String.format("Draw mode set to %b", draw), "Draw Mode Status",
+							JOptionPane.INFORMATION_MESSAGE);
+				}
 			}
 		}
 	}
@@ -616,13 +684,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			genPath();
 		}
 
-		private void genPath() {
-			selectedPath = new MPGen2D(convertPointArray(currentPath.get(currentPath.size() - 1).clickPoints), 5.0, 0.02, 3.867227572441874);
-			selectedPath.calculate();
-			if(selectedPath.smoothPath != null)
-				currentPath.get(currentPath.size() - 1).pathSegPoints = convert2DArray(selectedPath.smoothPath);
-		}
-
 		private void simDrawClick(double x, double y) {
 			if(currentPath.size() > 0 && currentPath.get(currentPath.size() - 1).pathSegPoints.size() == 0)
 				currentPath.remove(currentPath.size() - 1);
@@ -695,7 +756,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 							currentPath.add(new PathSegment(true));
 							if(currentPath.size() > 1)
 								shouldSmooth = true;
-						} else if(pm == PrevMode.UNDO) {
+						} else if(pm == PrevMode.UNDO || pm == PrevMode.REDO) {
 							simDrawClick(x, y);
 						} else {
 							if(currentPath.size() == 0)
@@ -726,7 +787,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 						pm = PrevMode.DRAWCLICK;
 					} else {//Handles staying at click mode
 						System.out.println("dank");
-						if(pm == PrevMode.UNDO)
+						if(pm == PrevMode.UNDO || pm == PrevMode.REDO)
 							simDrawClick(x, y);
 						else
 							simClick(x, y);
@@ -736,6 +797,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				}
 				//Every time a new point is added, reset the buffer counter
 				dank.clear();
+				firstUndoRedo = true;
 				System.out.println(previousDraw + " " + draw);
 				previousDraw = draw;
 			} else
