@@ -33,26 +33,26 @@ public class Polygon2D implements Shape, Cloneable, Serializable {
 	 * The total number of points.  The value of <code>npoints</code>
 	 * represents the number of valid points in this <code>Polygon</code>.
 	 */
-	public int npoints;
+	private int npoints;
 
 	/**
 	 * The array of <i>x</i> coordinates. The value of {@link #npoints npoints} is equal to the
 	 * number of points in this <code>Polygon2D</code>.
 	 */
-	public double[] xpoints;
+	private double[] xpoints;
 
 	/**
 	 * The array of <i>x</i> coordinates. The value of {@link #npoints npoints} is equal to the
 	 * number of points in this <code>Polygon2D</code>.
 	 */
-	public double[] ypoints;
+	private double[] ypoints;
 
 	/**
 	 * Bounds of the Polygon2D.
 	 *
 	 * @see #getBounds()
 	 */
-	protected Rectangle2D bounds;
+	private Rectangle2D bounds;
 
 	private Path2D path;
 	private Path2D closedPath;
@@ -477,26 +477,26 @@ class Polyline2D implements Shape, Cloneable, Serializable {
 	 * The total number of points.  The value of <code>npoints</code>
 	 * represents the number of points in this <code>Polyline2D</code>.
 	 */
-	public int npoints;
+	private int npoints;
 
 	/**
 	 * The array of <i>x</i> coordinates. The value of {@link #npoints npoints} is equal to the
 	 * number of points in this <code>Polyline2D</code>.
 	 */
-	public double[] xpoints;
+	private double[] xpoints;
 
 	/**
 	 * The array of <i>x</i> coordinates. The value of {@link #npoints npoints} is equal to the
 	 * number of points in this <code>Polyline2D</code>.
 	 */
-	public double[] ypoints;
+	private double[] ypoints;
 
 	/**
 	 * Bounds of the Polyline2D.
 	 *
 	 * @see #getBounds()
 	 */
-	protected Rectangle2D bounds;
+	private Rectangle2D bounds;
 
 	private Path2D path;
 	private Path2D closedPath;

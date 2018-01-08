@@ -24,7 +24,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	private static PathGUITool fig;
 	private JFrame g = new JFrame("Path GUI Tool");
 	private double upperXtic, upperYtic, height, xScale, yScale,
-			yTickYMax = 0, yTickYMin = 0, x1vert, rektWidth, rektHeight;
+			yTickYMax = 0, yTickYMin = 0, rektWidth, rektHeight;
 	private BetterArrayList<PathSegment> currentPath = new BetterArrayList<>();
 	private LinkedHashMap<String, BetterArrayList<PathSegment>> paths = new LinkedHashMap<>();
 	private boolean previousDraw = false, draw = true, shouldSmooth = false, firstUndoRedo = false;
@@ -76,26 +76,26 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 
 		// Draw X and Y lines axis.
 		Line2D.Double yaxis = new Line2D.Double(30, 10, 30, height - 30);
-		Line2D.Double xaxis = new Line2D.Double(30, height - 30, width, height - 30);
+		Line2D.Double xaxis = new Line2D.Double(30, height - 30, width - 12, height - 30);
 		g2.draw(yaxis);
 		g2.draw(xaxis);
 
 		//draw ticks
-		double yMax = 27.0, xMax = 54.3333333;
+		double yMax = 27.0, xMax = 54.0;
 		drawYTickRange(g2, yaxis, yMax);
 		drawXTickRange(g2, xaxis, xMax);
 
 		//plot field
 		plotFieldBorder(g2);
 
-		rektWidth = (x1vert - xaxis.getX1());
+		rektWidth = (xaxis.getX2() - xaxis.getX1());
 		rektHeight = (yaxis.getY2() - yaxis.getY1());
 		xScale = rektWidth / xMax;
 		yScale = rektHeight / yMax;
 
 		fg.plotFieldElements(g2, super.getHeight(), xScale, yScale);
 		g2.setColor(Color.black);
-		Rectangle rekt = new Rectangle((int) yaxis.getX1(), (int) yaxis.getY1(), (int) (x1vert - xaxis.getX1()), (int) (yaxis.getY2() - yaxis.getY1()));
+		Rectangle rekt = new Rectangle((int) yaxis.getX1(), (int) yaxis.getY1(), (int) rektWidth, (int) rektHeight);
 		g2.draw(rekt);
 		g2.setColor(super.getBackground());
 		g2.fillRect(rekt.x + rekt.width + 1, rekt.y, (int) width - rekt.width - 30, rekt.height + 1);//Hides excess grid lines
@@ -270,10 +270,9 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				double y2 = h - yScale * border[i + 1][j + 1];
 
 				g2.setPaint(Color.black);
-				if(x1 == x2) {
-					x1vert = x1;
+				if(x1 == x2)
 					g2.draw(new Line2D.Double(x1, y1 - (getHeight() - yTickYMin), x2, y2 + yTickYMax));
-				} else if(y1 == y2)
+				else if(y1 == y2)
 					g2.draw(new Line2D.Double(x1, y1 + yTickYMax, x2 + 30, y2 + yTickYMax));
 			}
 	}
@@ -321,7 +320,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			} else {
 				output.append("{").append(false).append(", ").append(false).append("},\n");
 				for(int j = 0; j < path.clickPoints.size(); j++)
-					output.append("{").append(path.clickPoints.get(j).x).append(", ").append(path.clickPoints.get(j).y).append(", ").append(path.clickPoints.get(j).movable).append("},\n");
+					output.append("{").append(path.clickPoints.get(j).x).append(", ").append(path.clickPoints.get(j).y).append(", ").
+							append(path.clickPoints.get(j).movable).append("},\n");
 			}
 		}
 		output.append("};\n");

@@ -2,108 +2,190 @@ package GUIStuff;
 
 import java.awt.*;
 import java.awt.geom.Line2D;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.IntStream;
 
 public class FieldGenerator {
+	private double incToFt(double inches) {
+		return inches / 12.0;
+	}
+
+	private double[][] flipOverXAndY(double[][] values) {
+		double[][] temp = new double[values.length][values[0].length];
+		IntStream.range(0, values.length).forEach(i -> {
+			temp[i][0] = 54.0 - values[i][0];
+			temp[i][1] = 27.0 - values[i][1];
+		});
+		return temp;
+	}
+
+	private double[][] flipOverY(double[][] values) {
+		double[][] temp = new double[values.length][values[0].length];
+		IntStream.range(0, values.length).forEach(i -> {
+			temp[i][0] = values[i][0];
+			temp[i][1] = 27.0 - values[i][1];
+		});
+		return temp;
+	}
+
 	void plotFieldElements(Graphics2D g2, int h, double xScale, double yScale) {
-		HashMap<String, double[][]> elements = new HashMap<>();
-		elements.put("blueAirship", new double[][]{
-				{15.44166, 11.79},//3.42 ft
-				{15.44166, 15.21},//5.9241666666666666666666666666666
-				{12.47926, 16.90583},
-				{9.517493, 15.21},//9.5174933333333333333333333333333
-				{7.788327, 16.185},
-				{9.517493, 15.21},
-				{9.517493, 11.79},//2.9625 , 1.695833333
-				{7.788327, 10.815},
-				{9.517493, 11.79},
-				{12.47926, 10.09417},//1.729166, 0.975
-				{15.44166, 11.79},
+		LinkedHashMap<String, double[][]> elements = new LinkedHashMap<>();
+		double[][] leftAutoLine = new double[][]{
+				{0.0 + incToFt(120), 0.0},
+				{0.0 + incToFt(120), 27.0},
+				{0.0 + incToFt(120) + incToFt(2.0), 27.0},
+				{0.0 + incToFt(120) + incToFt(2.0), 0.0},
+		};
+		double[][] redExZone = new double[][]{
+				{0.0, 27.0 / 2 + incToFt(12.0)},
+				{incToFt(36.0), 27.0 / 2 + incToFt(12.0)},
+				{incToFt(36.0), 27.0 / 2 + incToFt(60.0)},
+				{0.0, 27.0 / 2 + incToFt(60.0)},
+				{0.0, 27.0 / 2 + incToFt(58.0)},
+				{incToFt(36.0) - incToFt(2.0), 27.0 / 2 + incToFt(58.0)},
+				{incToFt(36.0) - incToFt(2.0), 27.0 / 2 + incToFt(14.0)},
+				{0.0, 27.0 / 2 + incToFt(14.0)},
+		};
+		double[][] redPcZone = new double[][]{
+				{incToFt(140.0), 27.0 / 2 - incToFt(45.0 / 2)},
+				{incToFt(98.0), 27.0 / 2 - incToFt(45.0 / 2)},
+				{incToFt(98.0), 27.0 / 2 + incToFt(45.0 / 2)},
+				{incToFt(140.0), 27.0 / 2 + incToFt(45.0 / 2)},
+				{incToFt(140.0), 27.0 / 2 + incToFt(41.0 / 2)},
+				{incToFt(100.0), 27.0 / 2 + incToFt(41.0 / 2)},
+				{incToFt(100.0), 27.0 / 2 - incToFt(41.0 / 2)},
+				{incToFt(140.0), 27.0 / 2 - incToFt(41.0 / 2)},
+		};
+		double[][] leftSwitchFrame = new double[][]{
+				{incToFt(140.0), 27.0 / 2 - (12.0 + incToFt(9.5)) / 2},
+				{incToFt(140.0), 27.0 / 2 + (12.0 + incToFt(9.5)) / 2},
+				{incToFt(196.0), 27.0 / 2 + (12.0 + incToFt(9.5)) / 2},
+				{incToFt(196.0), 27.0 / 2 - (12.0 + incToFt(9.5)) / 2},
+				{incToFt(140.0), 27.0 / 2 - (12.0 + incToFt(9.5)) / 2},
+		};
+		double[][] leftSwitchTop = new double[][]{
+				{incToFt(144.0), 27.0 / 2 + (12.0 + incToFt(9.5)) / 2 - incToFt(38.25)},
+				{incToFt(144.0), 27.0 / 2 + (12.0 + incToFt(9.5)) / 2 - incToFt(2.25)},
+				{incToFt(192.0), 27.0 / 2 + (12.0 + incToFt(9.5)) / 2 - incToFt(2.25)},
+				{incToFt(192.0), 27.0 / 2 + (12.0 + incToFt(9.5)) / 2 - incToFt(38.25)},
+		};
+		double[][] leftSwitchBot = new double[][]{
+				{incToFt(144.0), 27.0 / 2 - (12.0 + incToFt(9.5)) / 2 + incToFt(38.25)},
+				{incToFt(144.0), 27.0 / 2 - (12.0 + incToFt(9.5)) / 2 + incToFt(2.25)},
+				{incToFt(192.0), 27.0 / 2 - (12.0 + incToFt(9.5)) / 2 + incToFt(2.25)},
+				{incToFt(192.0), 27.0 / 2 - (12.0 + incToFt(9.5)) / 2 + incToFt(38.25)},
+		};
+		double[][] redPlatZoneLineBot = new double[][]{
+				{incToFt(196.0), incToFt(95.25)},
+				{27.0, incToFt(95.25)},
+				{27.0, incToFt(97.25)},
+				{incToFt(196.0), incToFt(97.25)},
+		};
+		double[][] redPlat = new double[][]{
+				{incToFt(261.47), incToFt(97.25)},
+				{incToFt(261.47), incToFt(97.25) + incToFt(12.5362481) * 2 + 8.8},
+				{27.0, incToFt(97.25) + incToFt(12.5362481) * 2 + 8.8},
+				{27.0, incToFt(97.25)},
+		};
+		double[][] redPlatInner = new double[][]{
+				{incToFt(261.47 + 12.5362481), 27.0 / 2 - 4.4},
+				{incToFt(261.47 + 12.5362481), 27.0 / 2 + 4.4},
+				{27.0, 27.0 / 2 + 4.4},
+				{27.0, 27.0 / 2 - 4.4},
+		};
+		double[][] scaleBot = new double[][]{
+				{incToFt(299.65), incToFt(71.57)},
+				{incToFt(299.65), incToFt(71.57 + 36.0)},
+				{incToFt(299.65 + 48.0), incToFt(71.57 + 36.0)},
+				{incToFt(299.65 + 48.0), incToFt(71.57)},
+		};
+		double[][] nullTop = new double[][]{
+				{incToFt(288.0), 0.0},
+				{incToFt(288.0), incToFt(95.25)},
+				{incToFt(288.0 + 72.0), incToFt(95.25)},
+				{incToFt(288.0 + 72.0), 0.0},
+				{incToFt(288.0 + 70.0), 0.0},
+				{incToFt(288.0 + 70.0), incToFt(93.25)},
+				{incToFt(288.0 + 2.0), incToFt(93.25)},
+				{incToFt(288.0 + 2.0), 0.0},
+		};
+		elements.put("leftAutoLine0", leftAutoLine);
+		elements.put("rightAutoLine0", flipOverXAndY(leftAutoLine));
+		elements.put("nullLineTop0", nullTop);
+		elements.put("nullLineBot0", flipOverXAndY(nullTop));
+		elements.put("redExZone0", redExZone);
+		elements.put("blueExZone0", flipOverXAndY(redExZone));
+		elements.put("redPcZone0", redPcZone);
+		elements.put("bluePcZone0", flipOverXAndY(redPcZone));
+		elements.put("leftSwitchFrame", leftSwitchFrame);
+		elements.put("rightSwitchFrame", flipOverXAndY(leftSwitchFrame));
+		elements.put("leftSwitchTop0", leftSwitchTop);
+		elements.put("leftSwitchBot0", leftSwitchBot);
+		elements.put("rightSwitchTop0", flipOverXAndY(leftSwitchBot));
+		elements.put("rightSwitchBot0", flipOverXAndY(leftSwitchTop));
+		elements.put("redPlatZoneLineTop0", flipOverY(redPlatZoneLineBot));
+		elements.put("redPlatZoneLineBot0", redPlatZoneLineBot);
+		elements.put("bluePlatZoneLineTop0", flipOverXAndY(redPlatZoneLineBot));
+		elements.put("bluePlatZoneLineBot0", flipOverY(flipOverXAndY(redPlatZoneLineBot)));
+		elements.put("redPlat0", redPlat);
+		elements.put("bluePlat0", flipOverXAndY(redPlat));
+		elements.put("redPlatInner0", redPlatInner);
+		elements.put("bluePlatInner0", flipOverXAndY(redPlatInner));
+		elements.put("scaleMid0", new double[][]{
+				{27.0 - incToFt(6.25), incToFt(71.57 + 36.0)},
+				{27.0 - incToFt(6.25), incToFt(97.25) + incToFt(12.5362481) * 2 + 8.8},
+				{27.0 + incToFt(6.25), incToFt(97.25) + incToFt(12.5362481) * 2 + 8.8},
+				{27.0 + incToFt(6.25), incToFt(71.57 + 36.0)},
 		});
-		elements.put("redAirship", new double[][]{
-				{38.89167, 11.79},//3.42 ft
-				{38.89167, 15.21},//5.9241666666666666666666666666666
-				{41.85407, 16.90583},
-				{44.81584, 15.21},//9.5174933333333333333333333333333
-				{46.545, 16.185},
-				{44.81584, 15.21},
-				{44.81584, 11.79},//2.9625 , 1.695833333
-				{46.545, 10.815},
-				{44.81584, 11.79},
-				{41.85407, 10.09417},//1.7291666, 0.975
-				{38.89167, 11.79},
-		});
-		elements.put("blueAutoLine", new double[][]{
-				{7.77500, 0.0},
-				{7.77500, 27.0},
-				{7.94166, 27.0},
-				{7.94166, 0.0},
-		});
-		elements.put("redAutoLine", new double[][]{
-				{46.55833, 0.0},
-				{46.55833, 27.0},
-				{46.39166, 27.0},
-				{46.39166, 0.0},
-		});
-		elements.put("blueKeyLine", new double[][]{
-				{0.0, 17.7316},//9.0375 from top 9.4425 from left outer line
-				{9.4425, 27.0},//-0.23083 feet inner line -0.24083 feet
-				{9.2016, 27.0},
-				{0.0, 17.9625},
-		});
-		elements.put("redKeyLine", new double[][]{
-				{54.33333, 17.7316},//9.0375 from top 9.4425 from left outer line
-				{44.89083, 27.0},//-0.23083 feet inner line -0.24083 feet
-				{45.13173, 27.0},
-				{54.33333, 17.9625},
-		});
-		elements.put("blueLoadingZoneLine", new double[][]{
-				{54.33333, 7.05083},
-				{40.3025, 0.0},//-0.18666666666666666666666666666667 for y -0.37083333333333333333333333333333 for x
-				{40.67333, 0.0},
-				{54.33333, 6.864163},
-		});
-		elements.put("redLoadingZoneLine", new double[][]{
-				{0.0, 7.05083},
-				{14.03083, 0.0},//-0.18666666666666666666666666666667 for y -0.37083333333333333333333333333333 for x
-				{13.659996, 0.0},
-				{0.0, 6.864163},
-		});
-		elements.put("blueBoilerLine", new double[][]{
-				{3.0814052429175126996746554085053, 27.0},
-				{0.0, 24.051223364526279556078066141698},//-0.0094280904158206 feet for x +0.0553900311929462 feet for y
+		elements.put("scaleTop0", flipOverXAndY(scaleBot));
+		elements.put("scaleBot0", scaleBot);
+		elements.put("blueTopPortal0", new double[][]{
 				{0.0, 27.0},
+				{0.0, 24.5258333},//2.4741667
+				{3.0, 27.0},
 		});
-		elements.put("redBoilerLine", new double[][]{
-				{51.251928090415787300325344591495, 27.0},
-				{54.33333333, 24.051223364526279556078066141698},//-0.0094280904158206 feet for x +0.0553900311929462 feet for y
-				{54.33333333, 27.0},
+		elements.put("blueBotPortal0", new double[][]{
+				{0.0, 0.0},
+				{0.0, 2.4741667},
+				{3.0, 0.0},
 		});
-		elements.put("redLoadingLine", new double[][]{
-				{0.0, 3.14583},//3.14583
-				{6.16166, 0.0},
-				{0.0, 0.0},//6.16166
+		elements.put("redTopPortal0", new double[][]{
+				{54.0, 27.0},
+				{51.0, 27.0},
+				{54.0, 24.5258333},
 		});
-		elements.put("blueLoadingLine", new double[][]{
-				{54.33333, 3.14583},//3.14583
-				{48.171673, 0.0},
-				{54.33333, 0.0},//6.16166
+		elements.put("redBotPortal0", new double[][]{
+				{54.0, 0.0},
+				{54.0, 2.4741667},
+				{51.0, 0.0},
 		});
 
 		for(Map.Entry<String, double[][]> entry : elements.entrySet()) {
-			if(entry.getKey().contains("Line")) {
+			String key = entry.getKey();
+			if(key.contains("0")) {
 				double[] xPoints = new double[entry.getValue().length], yPoints = new double[entry.getValue().length];
 				IntStream.range(0, entry.getValue().length).forEach(i -> {
 					xPoints[i] = 30 + xScale * entry.getValue()[i][0];
 					yPoints[i] = h - 30 - yScale * entry.getValue()[i][1];
 				});
 				Polygon2D p = new Polygon2D(xPoints, yPoints, xPoints.length);
-				if(entry.getKey().contains("blue"))
-					g2.setPaint(Color.blue);
+				if(key.contains("blue"))
+					if(key.contains("Inner"))
+						g2.setPaint(new Color(33, 63, 153));
+					else
+						g2.setPaint(Color.blue);
+				else if(key.contains("red"))
+					if(key.contains("Inner"))
+						g2.setPaint(new Color(163, 13, 13));
+					else
+						g2.setPaint(Color.red);
+				else if(key.contains("null"))
+					g2.setPaint(Color.white);
+				else if(key.contains("Mid"))
+					g2.setPaint(Color.lightGray);
 				else
-					g2.setPaint(Color.red);
+					g2.setPaint(Color.black);
 				g2.fill(p);
 				continue;
 			}
