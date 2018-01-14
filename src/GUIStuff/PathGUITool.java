@@ -409,11 +409,11 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	}
 
 	private boolean validatePathSegment(BetterArrayList<Point> b) {
-		return b.stream().allMatch(p -> validatePoint(p.x, p.y));
+		return IntStream.range(0, b.size() - 1).allMatch(i -> validatePoint(b.get(i).x, b.get(i).y, b.get(i + 1)));
 	}
 
-	private boolean validatePoint(double x, double y) {
-		return fg.invalidAreas.stream().noneMatch(p -> p.contains(x, y));
+	private boolean validatePoint(double x, double y, Point prev) {
+		return fg.invalidAreas.stream().noneMatch(p -> p.contains(x, y) || p.intersects(x, y, prev));
 	}
 
 	private enum PrevMode {
@@ -895,7 +895,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			if(p != null) {
 				double x = constrainTo((p.getX() - 30), rektWidth) / xScale;
 				double y = constrainTo(((height - 30) - p.getY()), rektHeight) / yScale;
-				if(validatePoint(x, y)) {
+				if(validatePoint(x, y, currentPath.isEmpty() ? null : currentPath.getLast().pathSegPoints.isEmpty() ? null : currentPath.getLast().
+						isDrawn ? currentPath.getLast().pathSegPoints.getLast() : currentPath.getLast().clickPoints.getLast())) {
 					if(drawMode)
 						if(previousDraw) {//Handles staying at draw mode
 							System.out.println("spicy");

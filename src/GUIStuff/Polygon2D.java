@@ -221,6 +221,27 @@ public class Polygon2D implements Shape, Cloneable, Serializable {
 		return closedPath.intersects(x, y, w, h);
 	}
 
+	private double[] checkIfClosed(double[] d) {
+		if(d[0] == d[d.length - 1]) return d;
+		else {
+			double[] temp = new double[d.length + 1];
+			System.arraycopy(d, 0, temp, 0, d.length);
+			temp[temp.length - 1] = temp[0];
+			return temp;
+		}
+	}
+
+	public boolean intersects(double x, double y, PathGUITool.Point p) {
+		if(p != null) {
+			double[] xs = checkIfClosed(xpoints), ys = checkIfClosed(ypoints);
+			Line2D line = new Line2D.Double(x, y, p.x, p.y);
+			for(int i = 0; i < xs.length - 2; i++) {
+				Line2D sLine = new Line2D.Double(xs[i], ys[i], xs[i + 1], ys[i + 1]);
+				if(line.intersectsLine(sLine)) return true;
+			}
+		}
+		return false;
+	}
 	/**
 	 * Tests if the interior of this <code>Polygon</code> intersects the
 	 * interior of a specified <code>Rectangle2D</code>.
