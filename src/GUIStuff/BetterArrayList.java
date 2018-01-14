@@ -3,7 +3,7 @@ package GUIStuff;
 import java.util.ArrayList;
 
 /**
- * This class is simply a wrapper class that contains some useful functions
+ * This class is simply a wrapper class for ArrayList that contains some useful functions
  * to reduce the character length of each line where applicable.
  *
  * @param <E>
