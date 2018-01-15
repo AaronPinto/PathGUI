@@ -2,6 +2,7 @@ package GUIStuff;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.IntStream;
 
 /**
  * This Class provides many useful algorithms for Robot Path Planning. It uses optimization techniques and knowledge
@@ -215,41 +216,32 @@ public class MPGen2D {
 		double[][] rightPath = new double[smoothPath.length][2];
 		double[][] gradient = new double[smoothPath.length][2];
 
-		for(int i = 0; i < smoothPath.length - 1; i++) {
+		IntStream.range(0, smoothPath.length - 1).forEach(i -> {
 			if((smoothPath[i + 1][0] - smoothPath[i][0]) > 0.0)
-				gradient[i][1] = Math.atan2(smoothPath[i + 1][1] - smoothPath[i][1], smoothPath[i + 1][0]
-						- smoothPath[i][0]);
+				gradient[i][1] = Math.atan2(smoothPath[i + 1][1] - smoothPath[i][1], smoothPath[i + 1][0] - smoothPath[i][0]);
 			else if((smoothPath[i + 1][1] - smoothPath[i][1]) > 0.0)
-				gradient[i][1] = Math.PI - Math.atan2(smoothPath[i + 1][1] - smoothPath[i][1], smoothPath[i + 1][0]
-						- smoothPath[i][0]);
+				gradient[i][1] = Math.PI - Math.atan2(smoothPath[i + 1][1] - smoothPath[i][1], smoothPath[i + 1][0] - smoothPath[i][0]);
 			else
-				gradient[i][1] = Math.abs(Math.atan2(smoothPath[i + 1][1] - smoothPath[i][1], smoothPath[i + 1][0]
-						- smoothPath[i][0])) - Math.PI;
+				gradient[i][1] = Math.abs(Math.atan2(smoothPath[i + 1][1] - smoothPath[i][1], smoothPath[i + 1][0] - smoothPath[i][0])) - Math.PI;
+		});
 
-			//			System.out.println((smoothPath[i + 1][1] - smoothPath[i][1]) + " " + (smoothPath[i + 1][0] - smoothPath[i][0])
-			//								+ " " + Math.atan2(smoothPath[i + 1][1] - smoothPath[i][1], smoothPath[i + 1][0] - smoothPath[i][0])
-			//								+ " " + Math.toDegrees(gradient[i][1]));
-		}
-
+		//Makes the last heading value = to the 2nd last for a smoother path.
 		gradient[gradient.length - 1][1] = gradient[gradient.length - 2][1];
 
-		for(int i = 0; i < gradient.length; i++) {
+		//convert to degrees 0 to 360 where 0 degrees is +x-axis, accumulated to align with our gyro
+		IntStream.range(0, gradient.length).forEach(i -> {
 			leftPath[i][0] = robotTrackWidth / 2 * Math.cos(gradient[i][1] + Math.PI / 2) + smoothPath[i][0];
 			leftPath[i][1] = robotTrackWidth / 2 * Math.sin(gradient[i][1] + Math.PI / 2) + smoothPath[i][1];
 			rightPath[i][0] = robotTrackWidth / 2 * Math.cos(gradient[i][1] - Math.PI / 2) + smoothPath[i][0];
 			rightPath[i][1] = robotTrackWidth / 2 * Math.sin(gradient[i][1] - Math.PI / 2) + smoothPath[i][1];
-
-			//convert to degrees 0 to 360 where 0 degrees is +X - axis, accumulated to align with WPI sensor
 			gradient[i][1] = -Math.toDegrees(gradient[i][1]);
-
 			if(i > 0) {
 				if((gradient[i][1] - gradient[i - 1][1]) > 180)
 					gradient[i][1] = -360 + gradient[i][1];
-
 				if((gradient[i][1] - gradient[i - 1][1]) < -180)
 					gradient[i][1] = 360 + gradient[i][1];
 			}
-		}
+		});
 		this.leftPath = leftPath;
 		this.rightPath = rightPath;
 	}

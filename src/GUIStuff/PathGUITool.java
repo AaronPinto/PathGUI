@@ -424,6 +424,11 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		return true;
 	}
 
+	private void showFieldError(InputEvent e) {
+		JOptionPane.showMessageDialog(e.getComponent(), String.format("You cannot create a point here as the generated " +
+				"path would go through the %s!", invalidElementName), "Point Validator", JOptionPane.ERROR_MESSAGE);
+	}
+
 	private enum PrevMode {
 		DRAW, CLICKDRAW, DRAWCLICK, CLICK, UNDO, REDO
 	}
@@ -435,11 +440,15 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	static class PathSegment {
 		boolean isDrawn;
 		BetterArrayList<Point> pathSegPoints;
+		BetterArrayList<Point> leftPSPoints;
+		BetterArrayList<Point> rightPSPoints;
 		BetterArrayList<Point> clickPoints;
 
 		PathSegment(boolean isDrawn) {
 			this.isDrawn = isDrawn;
 			this.pathSegPoints = new BetterArrayList<>();
+			this.leftPSPoints = new BetterArrayList<>();
+			this.rightPSPoints = new BetterArrayList<>();
 			this.clickPoints = new BetterArrayList<>(0);
 		}
 	}
@@ -660,11 +669,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				}
 			}
 		}
-	}
-
-	private void showFieldError(InputEvent e) {
-		JOptionPane.showMessageDialog(e.getComponent(), String.format("You cannot create a point here as the generated " +
-				"path would go through the %s!", invalidElementName), "Point Validator", JOptionPane.ERROR_MESSAGE);
 	}
 
 	class MouseListener extends MouseAdapter {
