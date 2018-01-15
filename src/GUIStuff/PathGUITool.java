@@ -414,7 +414,12 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	}
 
 	private boolean validatePoint(double x, double y, Point next) {
-		return fg.invalidAreas.stream().noneMatch(p -> p.contains(x, y) || p.intersects(x, y, next));
+		for(Polygon2D p : fg.invalidAreas) {
+			if(p.contains(x, y) || p.intersects(x, y, next)) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	private enum PrevMode {
@@ -660,7 +665,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		Cursor cursor;
 
 		{
-			System.out.println(getClass().getResource("/GUIStuff/cursor.png").getPath());
 			curImg = Toolkit.getDefaultToolkit().getImage(getClass().getResource("/GUIStuff/cursor.png"));
 			cursor = Toolkit.getDefaultToolkit().createCustomCursor(curImg, new java.awt.Point(7, 7), "dank");
 		}
@@ -736,6 +740,11 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 
 		private boolean findPoint(BetterArrayList<PathSegment> path, MouseEvent e, java.awt.Point p) {
 			java.awt.Point temp = new java.awt.Point();
+			for(Polygon2D poly : fg.invalidAreas)
+				if(poly.contains(p.x / xScale, p.y / yScale)) {
+					e.getComponent().setCursor(cursor);
+					return true;
+				}
 			for(PathSegment ps : path)
 				if(!ps.isDrawn)
 					for(Point po : ps.clickPoints)
