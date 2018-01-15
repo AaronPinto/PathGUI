@@ -107,23 +107,23 @@ public class FieldGenerator {
 	};
 
 	{
-		ArrayList<double[][]> invAreas = new ArrayList<>();
-		invAreas.add(leftSwitchFrame);
-		invAreas.add(flipOverXAndY(leftSwitchFrame));
-		invAreas.add(scaleMid);
-		invAreas.add(blueTopPortal);
-		invAreas.add(flipOverXAxis(blueTopPortal));
-		invAreas.add(redBotPortal);
-		invAreas.add(flipOverXAxis(redBotPortal));
+		LinkedHashMap<String, double[][]> invAreas = new LinkedHashMap<>();
+		invAreas.put("left switch frame", leftSwitchFrame);
+		invAreas.put("right switch frame", flipOverXAndY(leftSwitchFrame));
+		invAreas.put("scale", scaleMid);
+		invAreas.put("blue top portal", blueTopPortal);
+		invAreas.put("blue bot portal", flipOverXAxis(blueTopPortal));
+		invAreas.put("red bot portal", redBotPortal);
+		invAreas.put("red top portal", flipOverXAxis(redBotPortal));
 
-		for(double[][] a : invAreas) {
-			double[] xPoints = new double[a.length], yPoints = new double[a.length];
-			for(int i = 0; i < a.length; i++) {
-				xPoints[i] = a[i][0];
-				yPoints[i] = a[i][1];
-			}
-			invalidAreas.add(new Polygon2D(xPoints, yPoints, xPoints.length));
-		}
+		invAreas.forEach((key, value) -> {
+			double[] xPoints = new double[value.length], yPoints = new double[value.length];
+			IntStream.range(0, value.length).forEach(i -> {
+				xPoints[i] = value[i][0];
+				yPoints[i] = value[i][1];
+			});
+			invalidAreas.add(new Polygon2D(xPoints, yPoints, xPoints.length, key));
+		});
 
 		elements.put("leftAutoLine0", leftAutoLine);
 		elements.put("rightAutoLine0", flipOverXAndY(leftAutoLine));
@@ -187,7 +187,7 @@ public class FieldGenerator {
 					xPoints[i] = 30 + xScale * entry.getValue()[i][0];
 					yPoints[i] = h - 30 - yScale * entry.getValue()[i][1];
 				});
-				Polygon2D p = new Polygon2D(xPoints, yPoints, xPoints.length);
+				Polygon2D p = new Polygon2D(xPoints, yPoints, xPoints.length, entry.getKey());
 				if(key.contains("blue"))
 					if(key.contains("Inner"))
 						g2.setPaint(new Color(33, 63, 153));

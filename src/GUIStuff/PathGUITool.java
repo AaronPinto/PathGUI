@@ -94,6 +94,9 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	//add() adds last, peek() gets first
 	private Deque<PathSegment> redoBuffer = new ArrayDeque<>();
 
+	//A String that stores the name of the field element you cannot create a point/path in/through.
+	private String invalidElementName = "";
+
 	/**
 	 * Constructor.
 	 */
@@ -155,7 +158,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		drawXTickRange(g2, xaxis, xMax);
 
 		//draw the field and everything on it
-		plotFieldBorder(g2);
+		plotFieldBorder(g2, xMax, yMax);
 		rektWidth = (xaxis.getX2() - xaxis.getX1());
 		rektHeight = (yaxis.getY2() - yaxis.getY1());
 		xScale = rektWidth / xMax;
@@ -319,11 +322,11 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		}
 	}
 
-	private void plotFieldBorder(Graphics2D g2) {
+	private void plotFieldBorder(Graphics2D g2, double xMax, double yMax) {
 		double[][] border = new double[][]{
-				{54.0, 0},
-				{54.0, 27.0},
-				{0, 27.0},
+				{xMax, 0},
+				{xMax, yMax},
+				{0, yMax},
 		};
 
 		int w = super.getWidth(), h = super.getHeight();
@@ -397,8 +400,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				currentPath.getLast().pathSegPoints = convert2DArray(pathGen.smoothPath);
 				return true;
 			} else {
-				JOptionPane.showMessageDialog(e.getComponent(), "You cannot create a point here as the generated " +
-						"path would go through an uncrossable field element!", "Point Validator", JOptionPane.ERROR_MESSAGE);
+				showFieldError(e);
 				currentPath.getLast().clickPoints.removeLast();
 				return false;
 			}
@@ -414,11 +416,11 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	}
 
 	private boolean validatePoint(double x, double y, Point next) {
-		for(Polygon2D p : fg.invalidAreas) {
+		for(Polygon2D p : fg.invalidAreas)
 			if(p.contains(x, y) || p.intersects(x, y, next)) {
+				invalidElementName = p.name;
 				return false;
 			}
-		}
 		return true;
 	}
 
@@ -646,7 +648,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 								fileReader.close();
 								System.out.println("File imported successfully!");
 							} catch(FileNotFoundException ex) {
-								System.err.println("The file has magically disappeared!");
+								System.err.println("The file has magically disappeared");
 							} catch(Exception ex) {
 								System.err.println("Please format the data correctly!");
 								ex.printStackTrace();
@@ -658,6 +660,11 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				}
 			}
 		}
+	}
+
+	private void showFieldError(InputEvent e) {
+		JOptionPane.showMessageDialog(e.getComponent(), String.format("You cannot create a point here as the generated " +
+				"path would go through the %s!", invalidElementName), "Point Validator", JOptionPane.ERROR_MESSAGE);
 	}
 
 	class MouseListener extends MouseAdapter {
@@ -694,8 +701,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 						if(pathGen.smoothPath != null && validatePathSegment(convert2DArray(pathGen.smoothPath)))
 							currentPath.get(mf1).pathSegPoints = convert2DArray(pathGen.smoothPath);
 						else {
-							JOptionPane.showMessageDialog(e.getComponent(), "You cannot move that point here as the generated " +
-									"path would go through an uncrossable field element!", "Point Validator", JOptionPane.ERROR_MESSAGE);
+							showFieldError(e);
 							currentPath.get(mf1).clickPoints.get(mf2).x = prevPoint.x;
 							currentPath.get(mf1).clickPoints.get(mf2).y = prevPoint.y;
 						}
@@ -709,8 +715,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 						if(pathGen.smoothPath != null && validatePathSegment(convert2DArray(pathGen.smoothPath)))
 							paths.get(moveflag[0].toString()).get(mf1).pathSegPoints = convert2DArray(pathGen.smoothPath);
 						else {
-							JOptionPane.showMessageDialog(e.getComponent(), "You cannot move that point here as the generated " +
-									"path would go through an uncrossable field element!", "Point Validator", JOptionPane.ERROR_MESSAGE);
+							showFieldError(e);
 							paths.get(moveflag[0].toString()).get(mf1).clickPoints.get(mf2).x = prevPoint.x;
 							paths.get(moveflag[0].toString()).get(mf1).clickPoints.get(mf2).y = prevPoint.y;
 						}
@@ -740,11 +745,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 
 		private boolean findPoint(BetterArrayList<PathSegment> path, MouseEvent e, java.awt.Point p) {
 			java.awt.Point temp = new java.awt.Point();
-			for(Polygon2D poly : fg.invalidAreas)
-				if(poly.contains(p.x / xScale, p.y / yScale)) {
-					e.getComponent().setCursor(cursor);
-					return true;
-				}
 			for(PathSegment ps : path)
 				if(!ps.isDrawn)
 					for(Point po : ps.clickPoints)
@@ -762,6 +762,11 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 									}
 							}
 						}
+			for(Polygon2D poly : fg.invalidAreas)
+				if(poly.contains(p.x / xScale, p.y / yScale)) {
+					e.getComponent().setCursor(cursor);
+					return true;
+				}
 			return false;
 		}
 
@@ -839,8 +844,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 					if(pathGen.smoothPath != null && validatePathSegment(convert2DArray(pathGen.smoothPath)))
 						currentPath.get2ndLast().pathSegPoints = convert2DArray(pathGen.smoothPath);
 					else {
-						JOptionPane.showMessageDialog(e.getComponent(), "You cannot create a point here as the generated " +
-								"path would go through an uncrossable field element!", "Point Validator", JOptionPane.ERROR_MESSAGE);
+						showFieldError(e);
 						currentPath.get2ndLast().clickPoints.removeLast();
 						return false;
 					}
@@ -879,8 +883,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 							if(pathGen.smoothPath != null && validatePathSegment(convert2DArray(pathGen.smoothPath)))
 								currentPath.getLast().pathSegPoints = convert2DArray(pathGen.smoothPath);
 							else {
-								JOptionPane.showMessageDialog(e.getComponent(), "You cannot create a point here as the generated " +
-										"path would go through an uncrossable field element!", "Point Validator", JOptionPane.ERROR_MESSAGE);
+								showFieldError(e);
 								currentPath.get2ndLast().clickPoints.removeLast();
 							}
 						}
@@ -981,8 +984,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 					System.out.println(previousDraw + " " + drawMode + " shdSmth " + shouldSmooth);
 					previousDraw = drawMode;
 				} else
-					JOptionPane.showMessageDialog(e.getComponent(), "You cannot create a point here!", "Point Validator",
-							JOptionPane.ERROR_MESSAGE);
+					showFieldError(e);
 			} else
 				JOptionPane.showMessageDialog(e.getComponent(), "Please move your cursor back into the window!", "Boundary Monitor",
 						JOptionPane.ERROR_MESSAGE);

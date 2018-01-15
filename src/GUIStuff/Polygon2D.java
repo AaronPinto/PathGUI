@@ -55,6 +55,7 @@ public class Polygon2D implements Shape, Cloneable, Serializable {
 
 	private Path2D path;
 	private Path2D closedPath;
+	String name = "";
 
 	/**
 	 * Creates an empty Polygon2D.
@@ -79,8 +80,9 @@ public class Polygon2D implements Shape, Cloneable, Serializable {
 	 * @throws NullPointerException       if <code>xpoints</code> or
 	 *                                    <code>ypoints</code> is <code>null</code>.
 	 */
-	Polygon2D(double[] xpoints, double[] ypoints, int npoints) {
+	Polygon2D(double[] xpoints, double[] ypoints, int npoints, String name) {
 		assert npoints <= xpoints.length && npoints <= ypoints.length : "npoints > xpoints.length || npoints > ypoints.length";
+		this.name = name;
 		this.npoints = npoints;
 		this.xpoints = new double[npoints];
 		this.ypoints = new double[npoints];
@@ -89,7 +91,7 @@ public class Polygon2D implements Shape, Cloneable, Serializable {
 		calculatePath();
 	}
 
-	public Object clone() {
+	protected Object clone() {
 		Polygon2D pol = new Polygon2D();
 		IntStream.range(0, npoints).forEach(i -> pol.addPoint(xpoints[i], ypoints[i]));
 		return pol;
@@ -221,6 +223,13 @@ public class Polygon2D implements Shape, Cloneable, Serializable {
 		return closedPath.intersects(x, y, w, h);
 	}
 
+	/**
+	 * Checks if the last element in the array is the same as the first element.
+	 * Used for creating all point-to-point lines for a polygon.
+	 *
+	 * @param d the array to check
+	 * @return the inputted array if its closed, otherwise a new array which is closed
+	 */
 	private double[] checkIfClosed(double[] d) {
 		if(d[0] == d[d.length - 1]) return d;
 		else {
@@ -231,6 +240,14 @@ public class Polygon2D implements Shape, Cloneable, Serializable {
 		}
 	}
 
+
+	/**
+	 * Checks if the line made by the 2 input points intersect with any of the lines made by the points of this polygon
+	 * @param x the x-coordinate of the current point
+	 * @param y the y-coordinate of the current point
+	 * @param p the next point, to create a line to
+	 * @return <code>true</code> if the lines intersect <code>false</code> otherwise.
+	 */
 	public boolean intersects(double x, double y, PathGUITool.Point p) {
 		if(p != null) {
 			double[] xs = checkIfClosed(xpoints), ys = checkIfClosed(ypoints);
@@ -242,6 +259,7 @@ public class Polygon2D implements Shape, Cloneable, Serializable {
 		}
 		return false;
 	}
+
 	/**
 	 * Tests if the interior of this <code>Polygon</code> intersects the
 	 * interior of a specified <code>Rectangle2D</code>.
