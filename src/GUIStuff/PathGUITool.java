@@ -68,7 +68,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 
 	//doubles for storing difference size and scaling values
 	private double upperXtic = -Double.MAX_VALUE, upperYtic = -Double.MAX_VALUE, height, xScale, yScale, yTickYMax = 0, yTickYMin = 0,
-			rektWidth, rektHeight;
+			rektWidth, rektHeight, robotTrackWidth = 28 / 12;
 
 	//A BetterArrayList of PathSegments which is representative of the current path.
 	private BetterArrayList<PathSegment> currentPath = new BetterArrayList<>();
@@ -134,8 +134,14 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		fig = new PathGUITool();
 	}
 
+	private static BetterArrayList<Point> convert2DArray(double[][] p) {
+		if(p == null)
+			return new BetterArrayList<>(0);
+		return Arrays.stream(p).map(aP -> new Point(aP[0], aP[1])).collect(Collectors.toCollection(BetterArrayList::new));
+	}
+
 	/**
-	 * The central method which paints the panel and shows the figure and is called every time to update the GUI.
+	 * The central method which paints the panel and shows the figure and is called every time an event occurs to update the GUI.
 	 */
 	@Override
 	protected void paintComponent(Graphics g) {
@@ -197,12 +203,25 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 
 			if(aPath.pathSegPoints.size() > 1)
 				IntStream.range(0, aPath.pathSegPoints.size() - 1).forEach(j -> {
-					double x1 = 30 + xScale * aPath.pathSegPoints.get(j).x, x2 = 30 + xScale * aPath.pathSegPoints.get(j + 1).x;
-					double y1 = h - 30 - yScale * aPath.pathSegPoints.get(j).y, y2 = h - 30 - yScale * aPath.pathSegPoints.get(j + 1).y;
+					double x1 = 30 + xScale * aPath.pathSegPoints.get(j).x, x2 = 30 + xScale * aPath.pathSegPoints.get(j + 1).x,
+							y1 = h - 30 - yScale * aPath.pathSegPoints.get(j).y, y2 = h - 30 - yScale * aPath.pathSegPoints.get(j + 1).y;
+
+					double leftx1 = 30 + xScale * aPath.leftPSPoints.get(j).x, lefty1 = h - 30 - yScale * aPath.leftPSPoints.get(j).y,
+							leftx2 = 30 + xScale * aPath.leftPSPoints.get(j + 1).x, lefty2 = h - 30 - yScale * aPath.leftPSPoints.get(j + 1).y,
+							rightx1 = 30 + xScale * aPath.rightPSPoints.get(j).x, righty1 = h - 30 - yScale * aPath.rightPSPoints.get(j).y,
+							rightx2 = 30 + xScale * aPath.rightPSPoints.get(j + 1).x, righty2 = h - 30 - yScale * aPath.rightPSPoints.get(j + 1).y;
+
 					g2.setPaint(Color.green);
 					g2.draw(new Line2D.Double(x1, y1, x2, y2));
 					g2.fill(new Ellipse2D.Double(x1 - 2, y1 - 2, 4, 4));
 					g2.fill(new Ellipse2D.Double(x2 - 2, y2 - 2, 4, 4));
+					g2.setPaint(Color.gray);
+					g2.draw(new Line2D.Double(leftx1, lefty1, leftx2, lefty2));
+					g2.fill(new Ellipse2D.Double(leftx1 - 2, lefty1 - 2, 4, 4));
+					g2.fill(new Ellipse2D.Double(leftx2 - 2, lefty2 - 2, 4, 4));
+					g2.draw(new Line2D.Double(rightx1, righty1, rightx2, righty2));
+					g2.fill(new Ellipse2D.Double(rightx1 - 2, righty1 - 2, 4, 4));
+					g2.fill(new Ellipse2D.Double(rightx2 - 2, righty2 - 2, 4, 4));
 				});
 			else if(aPath.pathSegPoints.size() == 1) {
 				double x1 = 30 + xScale * aPath.pathSegPoints.get(0).x, y1 = h - 30 - yScale * aPath.pathSegPoints.get(0).y;
@@ -361,12 +380,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		return temp;
 	}
 
-	private BetterArrayList<Point> convert2DArray(double[][] p) {
-		if(p == null)
-			return new BetterArrayList<>(0);
-		return Arrays.stream(p).map(aP -> new Point(aP[0], aP[1])).collect(Collectors.toCollection(BetterArrayList::new));
-	}
-
 	private String output2DArray() {
 		StringBuilder output = new StringBuilder();
 		output.append("public static Object[][] currentPath = new Object[][]{\n");
@@ -392,18 +405,62 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		output.append("};\n");
 	}
 
+	private BetterArrayList<BetterArrayList<Point>> leftRight(BetterArrayList<Point> points, double robotTrackWidth) {
+		BetterArrayList<BetterArrayList<Point>> temp = new BetterArrayList<>();
+		temp.add(new BetterArrayList<>(points.size()));//Left
+		temp.add(new BetterArrayList<>(points.size()));//Right
+		double[] heading = new double[points.size()];
+
+		IntStream.range(0, points.size() - 1).forEach(i -> {
+			double x1 = points.get(i).x, x2 = points.get(i + 1).x, y1 = points.get(i).y, y2 = points.get(i + 1).y;
+			if(x2 - x1 > 0.0 || y2 - y1 > 0.0) {
+				heading[i] = Math.PI - Math.atan2(y2 - y1, x2 - x1);
+				System.out.println("one");
+			} else {
+				heading[i] = Math.abs(Math.atan2(y2 - y1, x2 - x1)) - Math.PI;
+				System.out.println("three");
+			}
+		});
+
+		//Makes the last heading value = to the 2nd last for a smoother path.
+		if(heading.length > 1)
+			heading[heading.length - 1] = heading[heading.length - 2];
+
+		//convert to degrees 0 to 360 where 0 degrees is +x-axis, accumulated to align with our gyro
+		IntStream.range(0, heading.length).forEach(i -> {
+			temp.get(0).add(i, new PathGUITool.Point(robotTrackWidth / 2 * Math.cos(heading[i] + Math.PI / 2) + points.get(i).x,
+					robotTrackWidth / 2 * Math.sin(heading[i] + Math.PI / 2) + points.get(i).y));
+			temp.get(1).add(i, new PathGUITool.Point(robotTrackWidth / 2 * Math.cos(heading[i] - Math.PI / 2) + points.get(i).x,
+					robotTrackWidth / 2 * Math.sin(heading[i] - Math.PI / 2) + points.get(i).y));
+			heading[i] = -Math.toDegrees(heading[i]);
+			if(i > 0) {
+				if((heading[i] - heading[i - 1]) > 180)
+					heading[i] = -360 + heading[i];
+				if((heading[i] - heading[i - 1]) < -180)
+					heading[i] = 360 + heading[i];
+			}
+		});
+
+		return temp;
+	}
+
 	private boolean genPath(InputEvent e) {
-		pathGen = new MPGen2D(convertPointArray(currentPath.getLast().clickPoints), 5.0, 0.02, 3.867227572441874);
+		pathGen = new MPGen2D(convertPointArray(currentPath.getLast().clickPoints), 5.0, 0.02, robotTrackWidth);
 		pathGen.calculate();
-		if(pathGen.smoothPath != null)
-			if(validatePathSegment(convert2DArray(pathGen.smoothPath))) {
-				currentPath.getLast().pathSegPoints = convert2DArray(pathGen.smoothPath);
+		if(pathGen.smoothPath != null) {
+			BetterArrayList<Point> temp = convert2DArray(pathGen.smoothPath);
+			BetterArrayList<BetterArrayList<Point>> lAndR = leftRight(temp, robotTrackWidth);
+			if(validatePathSegment(lAndR.get(0)) && validatePathSegment(lAndR.get(1))) {
+				currentPath.getLast().pathSegPoints = temp;
+				currentPath.getLast().leftPSPoints = lAndR.get(0);
+				currentPath.getLast().rightPSPoints = lAndR.get(1);
 				return true;
 			} else {
 				showFieldError(e);
 				currentPath.getLast().clickPoints.removeLast();
 				return false;
 			}
+		}
 		return true;
 	}
 
@@ -425,8 +482,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	}
 
 	private void showFieldError(InputEvent e) {
-		JOptionPane.showMessageDialog(e.getComponent(), String.format("You cannot create a point here as the generated " +
-				"path would go through the %s!", invalidElementName), "Point Validator", JOptionPane.ERROR_MESSAGE);
+		JOptionPane.showMessageDialog(e.getComponent(), String.format("You cannot create a point here as the robot following the generated path " +
+				"would go through the %s!", invalidElementName), "Point Validator", JOptionPane.ERROR_MESSAGE);
 	}
 
 	private enum PrevMode {
@@ -439,16 +496,11 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	 */
 	static class PathSegment {
 		boolean isDrawn;
-		BetterArrayList<Point> pathSegPoints;
-		BetterArrayList<Point> leftPSPoints;
-		BetterArrayList<Point> rightPSPoints;
-		BetterArrayList<Point> clickPoints;
+		BetterArrayList<Point> pathSegPoints, clickPoints, leftPSPoints, rightPSPoints;
 
 		PathSegment(boolean isDrawn) {
 			this.isDrawn = isDrawn;
 			this.pathSegPoints = new BetterArrayList<>();
-			this.leftPSPoints = new BetterArrayList<>();
-			this.rightPSPoints = new BetterArrayList<>();
 			this.clickPoints = new BetterArrayList<>(0);
 		}
 	}
@@ -700,7 +752,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 						Point prevPoint = new Point(currentPath.get(mf1).clickPoints.get(mf2), true);
 						currentPath.get(mf1).clickPoints.get(mf2).x = x;
 						currentPath.get(mf1).clickPoints.get(mf2).y = y;
-						pathGen = new MPGen2D(convertPointArray(currentPath.get(mf1).clickPoints), 5.0, 0.02, 3.867227572441874);
+						pathGen = new MPGen2D(convertPointArray(currentPath.get(mf1).clickPoints), 5.0, 0.02, robotTrackWidth);
 						pathGen.calculate();
 						if(pathGen.smoothPath != null && validatePathSegment(convert2DArray(pathGen.smoothPath)))
 							currentPath.get(mf1).pathSegPoints = convert2DArray(pathGen.smoothPath);
@@ -714,7 +766,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 						paths.get(moveflag[0].toString()).get(mf1).clickPoints.get(mf2).x = x;
 						paths.get(moveflag[0].toString()).get(mf1).clickPoints.get(mf2).y = y;
 						pathGen = new MPGen2D(convertPointArray(paths.get(moveflag[0].toString()).get(mf1).clickPoints), 5.0, 0.02,
-								3.867227572441874);
+								robotTrackWidth);
 						pathGen.calculate();
 						if(pathGen.smoothPath != null && validatePathSegment(convert2DArray(pathGen.smoothPath)))
 							paths.get(moveflag[0].toString()).get(mf1).pathSegPoints = convert2DArray(pathGen.smoothPath);
@@ -843,7 +895,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				if(currentPath.getLast().isDrawn) {
 					System.out.println("its actually ya boi");
 					currentPath.get2ndLast().clickPoints.add(new Point(x, y, false));
-					pathGen = new MPGen2D(convertPointArray(currentPath.get2ndLast().clickPoints), 5.0, 0.02, 3.867227572441874);
+					pathGen = new MPGen2D(convertPointArray(currentPath.get2ndLast().clickPoints), 5.0, 0.02, robotTrackWidth);
 					pathGen.calculate();
 					if(pathGen.smoothPath != null && validatePathSegment(convert2DArray(pathGen.smoothPath)))
 						currentPath.get2ndLast().pathSegPoints = convert2DArray(pathGen.smoothPath);
@@ -882,7 +934,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 							System.out.println("blah");
 							currentPath.get2ndLast().clickPoints.add(new Point(x, y));
 							pathGen = new MPGen2D(convertPointArray(currentPath.get2ndLast().clickPoints), 5.0, 0.02,
-									3.867227572441874);
+									robotTrackWidth);
 							pathGen.calculate();
 							if(pathGen.smoothPath != null && validatePathSegment(convert2DArray(pathGen.smoothPath)))
 								currentPath.getLast().pathSegPoints = convert2DArray(pathGen.smoothPath);

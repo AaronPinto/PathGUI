@@ -1,10 +1,11 @@
 package GUIStuff;
 
 import java.util.ArrayList;
+import java.util.Collection;
 
 /**
- * This class is simply a wrapper class for ArrayList that contains some useful functions
- * to reduce the character length of each line where applicable.
+ * This class is simply a wrapper class for ArrayList that contains some useful functions to reduce the character length
+ * of each line where applicable.
  *
  * @param <E>
  */
@@ -15,6 +16,10 @@ public class BetterArrayList<E> extends ArrayList<E> {
 
 	public BetterArrayList() {
 		super();
+	}
+
+	BetterArrayList(Collection<? extends E> c) {
+		super(c);
 	}
 
 	public E getLast() {

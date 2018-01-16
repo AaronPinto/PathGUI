@@ -2,7 +2,6 @@ package GUIStuff;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.stream.IntStream;
 
 /**
  * This Class provides many useful algorithms for Robot Path Planning. It uses optimization techniques and knowledge
@@ -22,7 +21,7 @@ import java.util.stream.IntStream;
  * Modified by: Aaron Pinto
  */
 public class MPGen2D {
-	double[][] smoothPath, leftPath, rightPath;
+	double[][] smoothPath;
 	private double[][] origPath;
 	private double timeStep, totalTime, robotTrackWidth, pathAlpha, pathBeta, pathTolerance;
 
@@ -211,41 +210,6 @@ public class MPGen2D {
 		return newPath;
 	}
 
-	private void leftRight(double[][] smoothPath, double robotTrackWidth) {
-		double[][] leftPath = new double[smoothPath.length][2];
-		double[][] rightPath = new double[smoothPath.length][2];
-		double[][] gradient = new double[smoothPath.length][2];
-
-		IntStream.range(0, smoothPath.length - 1).forEach(i -> {
-			if((smoothPath[i + 1][0] - smoothPath[i][0]) > 0.0)
-				gradient[i][1] = Math.atan2(smoothPath[i + 1][1] - smoothPath[i][1], smoothPath[i + 1][0] - smoothPath[i][0]);
-			else if((smoothPath[i + 1][1] - smoothPath[i][1]) > 0.0)
-				gradient[i][1] = Math.PI - Math.atan2(smoothPath[i + 1][1] - smoothPath[i][1], smoothPath[i + 1][0] - smoothPath[i][0]);
-			else
-				gradient[i][1] = Math.abs(Math.atan2(smoothPath[i + 1][1] - smoothPath[i][1], smoothPath[i + 1][0] - smoothPath[i][0])) - Math.PI;
-		});
-
-		//Makes the last heading value = to the 2nd last for a smoother path.
-		gradient[gradient.length - 1][1] = gradient[gradient.length - 2][1];
-
-		//convert to degrees 0 to 360 where 0 degrees is +x-axis, accumulated to align with our gyro
-		IntStream.range(0, gradient.length).forEach(i -> {
-			leftPath[i][0] = robotTrackWidth / 2 * Math.cos(gradient[i][1] + Math.PI / 2) + smoothPath[i][0];
-			leftPath[i][1] = robotTrackWidth / 2 * Math.sin(gradient[i][1] + Math.PI / 2) + smoothPath[i][1];
-			rightPath[i][0] = robotTrackWidth / 2 * Math.cos(gradient[i][1] - Math.PI / 2) + smoothPath[i][0];
-			rightPath[i][1] = robotTrackWidth / 2 * Math.sin(gradient[i][1] - Math.PI / 2) + smoothPath[i][1];
-			gradient[i][1] = -Math.toDegrees(gradient[i][1]);
-			if(i > 0) {
-				if((gradient[i][1] - gradient[i - 1][1]) > 180)
-					gradient[i][1] = -360 + gradient[i][1];
-				if((gradient[i][1] - gradient[i - 1][1]) < -180)
-					gradient[i][1] = 360 + gradient[i][1];
-			}
-		});
-		this.leftPath = leftPath;
-		this.rightPath = rightPath;
-	}
-
 	public void calculate() {
 		if(origPath != null) {
 			//first find only direction changing nodes
@@ -265,15 +229,7 @@ public class MPGen2D {
 				}
 			}
 
-			//calculate left and right path based on center path
-			leftRight(smoothPath, robotTrackWidth);
-
 //			Arrays.stream(smoothPath).map(aSmoothPath -> "{" + aSmoothPath[0] + ", " + aSmoothPath[1] + "},").forEach(System.out::println);
 		}
 	}
-
-//	public static void main(String[] args) {
-//		MPGen2D mpGen = new MPGen2D(dank, 3.0, 0.02, 3.867227572441874);
-//		mpGen.calculate();
-//	}
 }	
