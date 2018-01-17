@@ -27,35 +27,30 @@ import java.util.stream.IntStream;
  */
 public class Polygon2D implements Shape, Cloneable, Serializable {
 	private static final long serialVersionUID = 1L;
-
+	String name = "";
 	/**
 	 * The total number of points.  The value of <code>npoints</code>
 	 * represents the number of valid points in this <code>Polygon</code>.
 	 */
 	private int npoints;
-
 	/**
 	 * The array of <i>x</i> coordinates. The value of {@link #npoints npoints} is equal to the
 	 * number of points in this <code>Polygon2D</code>.
 	 */
 	private double[] xpoints;
-
 	/**
 	 * The array of <i>x</i> coordinates. The value of {@link #npoints npoints} is equal to the
 	 * number of points in this <code>Polygon2D</code>.
 	 */
 	private double[] ypoints;
-
 	/**
 	 * Bounds of the Polygon2D.
 	 *
 	 * @see #getBounds()
 	 */
 	private Rectangle2D bounds;
-
 	private Path2D path;
 	private Path2D closedPath;
-	String name = "";
 
 	/**
 	 * Creates an empty Polygon2D.
@@ -243,6 +238,7 @@ public class Polygon2D implements Shape, Cloneable, Serializable {
 
 	/**
 	 * Checks if the line made by the 2 input points intersect with any of the lines made by the points of this polygon
+	 *
 	 * @param x the x-coordinate of the current point
 	 * @param y the y-coordinate of the current point
 	 * @param p the next point, to create a line to
@@ -252,12 +248,21 @@ public class Polygon2D implements Shape, Cloneable, Serializable {
 		if(p != null) {
 			double[] xs = checkIfClosed(xpoints), ys = checkIfClosed(ypoints);
 			Line2D line = new Line2D.Double(x, y, p.x, p.y);
-			for(int i = 0; i < xs.length - 2; i++) {
-				Line2D sLine = new Line2D.Double(xs[i], ys[i], xs[i + 1], ys[i + 1]);
-				if(line.intersectsLine(sLine)) return true;
-			}
+			return IntStream.range(0, xs.length - 2).mapToObj(i -> new Line2D.Double(xs[i], ys[i], xs[i + 1], ys[i + 1])).
+					anyMatch(line::intersectsLine);
 		}
 		return false;
+	}
+
+	/**
+	 * Checks if a point is on the border or outside this polygon
+	 *
+	 * @param x the x-coordinate of the current point
+	 * @param y the y-coordinate of the current point
+	 * @return <code>true</code> if the lines intersect <code>false</code> otherwise.
+	 */
+	public boolean out(double x, double y) {
+		return x <= this.bounds.getX() || x >= this.bounds.getMaxX() || y <= this.bounds.getY() || y >= this.bounds.getMaxY();
 	}
 
 	/**

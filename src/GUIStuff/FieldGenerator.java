@@ -10,6 +10,15 @@ import java.util.stream.IntStream;
 public class FieldGenerator {
 	ArrayList<Polygon2D> invalidAreas = new ArrayList<>();
 	private LinkedHashMap<String, double[][]> elements = new LinkedHashMap<>();
+
+	private double[][] fieldBorder = new double[][]{
+			{0.0, 0.0},
+			{54.0, 0},
+			{54.0, 27.0},
+			{0, 27.0},
+			{0.0, 0.0},
+	};
+
 	private double[][] leftAutoLine = new double[][]{
 			{0.0 + incToFt(120), 0.0},
 			{0.0 + incToFt(120), 27.0},
@@ -115,6 +124,7 @@ public class FieldGenerator {
 		invAreas.put("blue bot portal", flipOverXAxis(blueTopPortal));
 		invAreas.put("red bot portal", redBotPortal);
 		invAreas.put("red top portal", flipOverXAxis(redBotPortal));
+		invAreas.put("field border", fieldBorder);
 
 		invAreas.forEach((key, value) -> {
 			double[] xPoints = new double[value.length], yPoints = new double[value.length];
@@ -154,6 +164,7 @@ public class FieldGenerator {
 		elements.put("blueBotPortal0", flipOverXAxis(blueTopPortal));
 		elements.put("redTopPortal0", redBotPortal);
 		elements.put("redBotPortal0", flipOverXAxis(redBotPortal));
+		elements.put("fieldBorder", fieldBorder);
 	}
 
 	private double incToFt(double inches) {
@@ -178,7 +189,7 @@ public class FieldGenerator {
 		return temp;
 	}
 
-	void plotFieldElements(Graphics2D g2, int h, double xScale, double yScale) {
+	void plotField(Graphics2D g2, int h, double xScale, double yScale) {
 		for(Map.Entry<String, double[][]> entry : elements.entrySet()) {
 			String key = entry.getKey();
 			if(key.contains("0")) {
