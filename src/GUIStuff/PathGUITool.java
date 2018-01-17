@@ -39,7 +39,7 @@ import java.util.stream.IntStream;
  * in proper Java 2D array format, and then display the paths from that file.
  * <p>
  * For more information on the field, see: https://www.youtube.com/watch?v=HZbdwYiCY74 and
- * https://firstfrc.blob.core.windows.net/frc2018/Drawings/LayoutandMarkingDiagram.pdf
+ * <a href="https://firstfrc.blob.core.windows.net/frc2018/Drawings/LayoutandMarkingDiagram.pdf">FRC 2018 Field Drawings</a>
  * <p>
  * For version history see: https://github.com/AaronPinto/PathGUI
  * @see BetterArrayList
@@ -66,7 +66,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	//The JFrame for this GUI. It actually displays the window
 	private JFrame g = new JFrame("Path GUI Tool");
 
-	private double height, xScale, yScale, yTickYMax = 0, yTickYMin = 0, rektWidth, rektHeight, robotTrackWidth = 28 / 12;
+	private double height, xScale, yScale, yTickYMax = 0, yTickYMin = 0, rectWidth, rectHeight, robotTrackWidth = 28 / 12, ppiX, ppiY;
 
 	//A BetterArrayList of PathSegments which is representative of the current path.
 	private BetterArrayList<PathSegment> currentPath = new BetterArrayList<>();
@@ -116,14 +116,15 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	}
 
 	/**
-	 * A simple function that constrains a value form 0.0 to the specified maximum bound
+	 * A simple function that constrains a value from the specified min bound to the specified max bound
 	 *
 	 * @param value        The value to constrain
-	 * @param maxConstrain The maximum bound
+	 * @param minConstrain The minimum bound (in the same units as the value)
+	 * @param maxConstrain The maximum bound (in the same units as the value)
 	 * @return the constrained value
 	 */
-	private static double constrainTo(double value, double maxConstrain) {
-		return Math.max(0.0, Math.min(maxConstrain, value));
+	private static double constrainTo(double value, double minConstrain, double maxConstrain) {
+		return Math.max(minConstrain, Math.min(maxConstrain, value));
 	}
 
 	/**
@@ -140,6 +141,17 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	}
 
 	/**
+	 * A simple function that constrains a value from 0.0 to the specified maximum bound
+	 *
+	 * @param value        The value to constrain
+	 * @param maxConstrain The maximum bound (in the same units as the value)
+	 * @return the constrained value
+	 */
+	private static double constrainTo(double value, double maxConstrain) {
+		return constrainTo(value, 0.0, maxConstrain);
+	}
+
+	/**
 	 * The central method which paints the panel and shows the figure and is called every time an event occurs to update the GUI.
 	 */
 	@Override
@@ -151,7 +163,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		double width = getWidth();
 		height = getHeight();
 
-		// Draw X and Y lines axis.
+		//Draw X and Y lines axis.
 		Line2D.Double yaxis = new Line2D.Double(30, 10, 30, height - 30);
 		Line2D.Double xaxis = new Line2D.Double(30, height - 30, width - 12, height - 30);
 		g2.draw(yaxis);
@@ -163,13 +175,15 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		drawXTickRange(g2, xaxis, xMax);
 
 		//draw the field and everything on it
-		rektWidth = (xaxis.getX2() - xaxis.getX1());
-		rektHeight = (yaxis.getY2() - yaxis.getY1());
-		xScale = rektWidth / xMax;
-		yScale = rektHeight / yMax;
+		rectWidth = (xaxis.getX2() - xaxis.getX1());
+		rectHeight = (yaxis.getY2() - yaxis.getY1());
+		xScale = rectWidth / xMax;
+		yScale = rectHeight / yMax;
+		ppiX = 1.0 / 12.0 * xScale;
+		ppiY = 1.0 / 12.0 * yScale;
 		fg.plotField(g2, super.getHeight(), xScale, yScale);
 		g2.setColor(Color.black);
-		Rectangle rekt = new Rectangle((int) yaxis.getX1(), (int) yaxis.getY1(), (int) rektWidth, (int) rektHeight);
+		Rectangle rekt = new Rectangle((int) yaxis.getX1(), (int) yaxis.getY1(), (int) rectWidth, (int) rectHeight);
 		g2.draw(rekt);
 
 		//Hides excess grid lines
@@ -208,6 +222,13 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 					g2.fill(new Ellipse2D.Double(x1 - 2, y1 - 2, 4, 4));
 					g2.fill(new Ellipse2D.Double(x2 - 2, y2 - 2, 4, 4));
 
+					/*
+					  In order to see the left and right paths for drawn path segments also, comment out this if statement after uncommenting
+					  all instances (except for the one below) of the 3 lines below. Just Ctrl + F "leftRight" and uncomment accordingly.
+					  BetterArrayList<BetterArrayList<Point>> lr = leftRight(currentPath.getLast().pathSegPoints, robotTrackWidth);
+					  currentPath.getLast().leftPSPoints = lr.get(0);
+					  currentPath.getLast().rightPSPoints = lr.get(1);
+					*/
 					if(!aPath.isDrawn) {
 						double leftx1 = 30 + xScale * aPath.leftPSPoints.get(j).x, lefty1 = h - 30 - yScale * aPath.leftPSPoints.get(j).y,
 								leftx2 = 30 + xScale * aPath.leftPSPoints.get(j + 1).x, lefty2 = h - 30 - yScale * aPath.leftPSPoints.get(j + 1).y,
@@ -384,22 +405,26 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		temp.add(new BetterArrayList<>(points.size()));//Right
 		double[] heading = new double[points.size()];
 
-		IntStream.range(0, points.size() - 1).forEach(i -> {
-			double x1 = points.get(i).x, x2 = points.get(i + 1).x, y1 = points.get(i).y, y2 = points.get(i + 1).y;
-			heading[i] = Math.atan2(y2 - y1, x2 - x1);
-		});
+		System.out.println(points.size());
 
-		//Makes the last heading value = to the 2nd last for a smoother path.
-		if(heading.length > 1)
-			heading[heading.length - 1] = heading[heading.length - 2];
+		if(points.size() > 1) {
+			IntStream.range(0, points.size() - 1).forEach(i -> {
+				double x1 = points.get(i).x, x2 = points.get(i + 1).x, y1 = points.get(i).y, y2 = points.get(i + 1).y;
+				heading[i] = Math.atan2(y2 - y1, x2 - x1);
+			});
 
-		//convert to degrees 0 to 360 where 0 degrees is +x-axis, accumulated to align with our gyro
-		IntStream.range(0, heading.length).forEach(i -> {
-			temp.get(0).add(i, new PathGUITool.Point(robotTrackWidth / 2 * Math.cos(heading[i] + Math.PI / 2) + points.get(i).x,
-					robotTrackWidth / 2 * Math.sin(heading[i] + Math.PI / 2) + points.get(i).y));
-			temp.get(1).add(i, new PathGUITool.Point(robotTrackWidth / 2 * Math.cos(heading[i] - Math.PI / 2) + points.get(i).x,
-					robotTrackWidth / 2 * Math.sin(heading[i] - Math.PI / 2) + points.get(i).y));
-		});
+			//Makes the last heading value = to the 2nd last for a smoother path.
+			if(heading.length > 1)
+				heading[heading.length - 1] = heading[heading.length - 2];
+
+			//convert to degrees 0 to 360 where 0 degrees is +x-axis, accumulated to align with our gyro
+			IntStream.range(0, heading.length).forEach(i -> {
+				temp.get(0).add(i, new PathGUITool.Point(robotTrackWidth / 2 * Math.cos(heading[i] + Math.PI / 2) + points.get(i).x,
+						robotTrackWidth / 2 * Math.sin(heading[i] + Math.PI / 2) + points.get(i).y));
+				temp.get(1).add(i, new PathGUITool.Point(robotTrackWidth / 2 * Math.cos(heading[i] - Math.PI / 2) + points.get(i).x,
+						robotTrackWidth / 2 * Math.sin(heading[i] - Math.PI / 2) + points.get(i).y));
+			});
+		} else if(points.size() == 1) temp.get(0).add(0, new Point(points.get(0).x, points.get(0).y));
 
 		return temp;
 	}
@@ -430,16 +455,16 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	}
 
 	private boolean validatePathSegment(BetterArrayList<Point> b) {
+		if(b.size() == 1) return validatePoint(b.get(0).x, b.get(0).y, null);
 		return IntStream.range(0, b.size() - 1).allMatch(i -> validatePoint(b.get(i).x, b.get(i).y, b.get(i + 1)));
 	}
 
 	private boolean validatePoint(double x, double y, Point next) {
-		for(Polygon2D p : fg.invalidAreas) {
+		for(Polygon2D p : fg.invalidAreas)
 			if(p.name.equals("field border") ? p.out(x, y) : p.contains(x, y) || p.intersects(x, y, next)) {
 				invalidElementName = p.name;
 				return false;
 			}
-		}
 		return true;
 	}
 
@@ -714,8 +739,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			if(mf1 > -1) {
 				java.awt.Point p = g.getRootPane().getMousePosition();
 				if(p != null) {
-					double x = constrainTo((p.getX() - 30), rektWidth) / xScale;
-					double y = constrainTo(((height - 30) - p.getY()), rektHeight) / yScale;
+					double x = constrainTo(p.getX() - 30, ppiX, rectWidth - ppiX) / xScale;
+					double y = constrainTo(((height - 30) - p.getY()), ppiY, rectHeight - ppiY) / yScale;
 					if(moveflag[0].equals("current")) {
 						Point prevPoint = new Point(currentPath.get(mf1).clickPoints.get(mf2), true);
 						currentPath.get(mf1).clickPoints.get(mf2).x = x;
@@ -745,8 +770,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		public void mouseMoved(MouseEvent e) {
 			java.awt.Point p = g.getRootPane().getMousePosition();
 			if(p != null) {
-				p.x = (int) constrainTo((p.getX() - 30), rektWidth);
-				p.y = (int) constrainTo(((height - 30) - p.getY()), rektHeight);
+				p.x = (int) constrainTo((p.getX() - 30), rectWidth);
+				p.y = (int) constrainTo(((height - 30) - p.getY()), rectHeight);
 				if(!findPoint(currentPath, e, p)) {
 					if(paths.isEmpty()) e.getComponent().setCursor(Cursor.getDefaultCursor());
 					for(Map.Entry<String, BetterArrayList<PathSegment>> en : paths.entrySet())
@@ -776,7 +801,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 							}
 						}
 			for(Polygon2D poly : fg.invalidAreas)
-				if(poly.name.equals("field border") ? poly.out(p.x / xScale, p.y / yScale) : poly.contains(p.x / xScale, p.y / yScale)) {
+				if(poly.name.equals("field border") ? !path.isEmpty() && poly.out(p.x / xScale, p.y / yScale) :
+						poly.contains(p.x / xScale, p.y / yScale)) {
 					e.getComponent().setCursor(cursor);
 					return true;
 				}
@@ -792,8 +818,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		public void mousePressed(MouseEvent e) {
 			java.awt.Point p = g.getRootPane().getMousePosition();
 			if(p != null) {
-				p.x = (int) constrainTo((p.getX() - 30), rektWidth);
-				p.y = (int) constrainTo(((height - 30) - p.getY()), rektHeight);
+				p.x = (int) constrainTo((p.getX() - 30), rectWidth);
+				p.y = (int) constrainTo(((height - 30) - p.getY()), rectHeight);
 				moveflag = new Object[]{-1, -1, -1};
 				//Check the current path to see if the clicked point is a part of it and if it isn't then check all the other paths
 				//Only check the other paths if you can't find it in the current one to save time and resources instead of needlessly
@@ -921,8 +947,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			//Get the mouse position (x, y) on the window, constrain it to the field borders and convert it to feet.
 			java.awt.Point p = g.getRootPane().getMousePosition();
 			if(p != null) {
-				double x = constrainTo((p.getX() - 30), rektWidth) / xScale;
-				double y = constrainTo(((height - 30) - p.getY()), rektHeight) / yScale;
+				double x = constrainTo(p.getX() - 30, ppiX, rectWidth - ppiX) / xScale;
+				double y = constrainTo(((height - 30) - p.getY()), ppiY, rectHeight - ppiY) / yScale;
 				if(validatePoint(x, y, currentPath.isEmpty() ? null : currentPath.getLast().pathSegPoints.isEmpty() ? null : currentPath.getLast().
 						isDrawn ? currentPath.getLast().pathSegPoints.getLast() : currentPath.getLast().clickPoints.getLast())) {
 					if(drawMode)
@@ -987,8 +1013,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 						pm = PrevMode.CLICK;
 					}
 					fig.repaint();
-					//Every time a new point is added, clear the redo buffer, give the first-time boolean its virginity back and update the
-					//previous draw state
+					//Every time a new point is added, clear the redo buffer, set the firstTime boolean to true because when undo or redo is
+					//called it will be the first time it has been called for this path with a new point, and update the previous draw state
 					redoBuffer.clear();
 					firstUndoRedo = true;
 					System.out.println(previousDraw + " " + drawMode + " shdSmth " + shouldSmooth);
