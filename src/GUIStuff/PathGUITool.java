@@ -1084,14 +1084,17 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 						System.out.println("WEWWWWWWWWWWWWWWW");
 						currentPath.getLast().clickPoints.add(new Point(x, y));
 						if(genPath(currentPath.getLast(), true)) {
+							System.out.println("alright");
 							if(currentPath.get2ndLast().isDrawn)
 								for(int i = 0; i < numToRemove - 1; i++)
 									currentPath.get2ndLast().pathSegPoints.removeLast();
 							if(numToRemove == 1 && currentPath.get2ndLast().pathSegPoints.size() == 1 && currentPath.get2ndLast().clickPoints.size() == 1
 									&& !currentPath.get2ndLast().isDrawn)
 								currentPath.remove(currentPath.size() - 2);
-						} else if(!currentPath.getLast().isDrawn)
+						} else if(!currentPath.getLast().isDrawn) {
+							System.out.println("god damn it");
 							currentPath.removeLast();
+						}
 					}
 				} else if(currentPath.size() == 1 && currentPath.getLast().clickPoints.isEmpty() && currentPath.getLast().pathSegPoints.isEmpty() &&
 						!currentPath.getLast().isDrawn)
