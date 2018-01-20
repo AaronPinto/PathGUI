@@ -681,7 +681,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	}
 
 	private void showFieldError() {
-		System.out.println("error " + invalidElementName);
+		System.out.println("error " + invalidElementName + " " + pm);
 		JOptionPane.showMessageDialog(g, String.format("You cannot create a point here as the robot following the generated path " +
 				"would go through the %s!", invalidElementName), "Point Validator", JOptionPane.ERROR_MESSAGE);
 	}
@@ -1166,6 +1166,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 					} else {//Handles staying at click mode
 						System.out.println("dank");
 						if(pm == PrevMode.UNDO || pm == PrevMode.REDO)
+							simDrawClick(point[0], point[1]);
+						else if(currentPath.getLast().isDrawn)
 							simDrawClick(point[0], point[1]);
 						else
 							simClick(point[0], point[1]);
