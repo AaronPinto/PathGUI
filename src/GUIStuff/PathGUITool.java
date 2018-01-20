@@ -681,6 +681,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	}
 
 	private void showFieldError() {
+		System.out.println("error " + invalidElementName);
 		JOptionPane.showMessageDialog(g, String.format("You cannot create a point here as the robot following the generated path " +
 				"would go through the %s!", invalidElementName), "Point Validator", JOptionPane.ERROR_MESSAGE);
 	}
@@ -1172,7 +1173,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 					//called it will be the first time it has been called for this path with a new point, and update the previous draw state
 					redoBuffer.clear();
 					firstUndoRedo = true;
-					System.out.println(previousDraw + " " + drawMode + " shdSmth " + shouldSmooth);
+					System.out.println(previousDraw + " " + drawMode + " shdSmth " + shouldSmooth + " " + pm);
 					previousDraw = drawMode;
 				} else
 					showFieldError();
