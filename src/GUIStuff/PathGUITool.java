@@ -1026,7 +1026,11 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				if(currentPath.getLast().isDrawn) {
 					System.out.println("its actually ya boi");
 					currentPath.get2ndLast().clickPoints.add(new Point(x, y, false));
-					return genPath(currentPath.get2ndLast(), true);
+					if(genPath(currentPath.get2ndLast(), true))
+						return true;
+					else
+						shouldSmooth = true;
+					return false;
 				}
 			}
 			return false;
@@ -1077,14 +1081,16 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 									pathSegPoints.size() - numToRemove), false));
 						currentPath.getLast().clickPoints.add(new Point(currentPath.get2ndLast().pathSegPoints.getLast(), false));
 						System.out.println("WEWWWWWWWWWWWWWWW");
-						if(currentPath.get2ndLast().isDrawn)
-							for(int i = 0; i < numToRemove - 1; i++)
-								currentPath.get2ndLast().pathSegPoints.removeLast();
-						if(numToRemove == 1 && currentPath.get2ndLast().pathSegPoints.size() == 1 && currentPath.get2ndLast().clickPoints.size() == 1
-								&& !currentPath.get2ndLast().isDrawn)
-							currentPath.remove(currentPath.size() - 2);
 						currentPath.getLast().clickPoints.add(new Point(x, y));
-						genPath(currentPath.getLast(), true);
+						if(genPath(currentPath.getLast(), true)) {
+							if(currentPath.get2ndLast().isDrawn)
+								for(int i = 0; i < numToRemove - 1; i++)
+									currentPath.get2ndLast().pathSegPoints.removeLast();
+							if(numToRemove == 1 && currentPath.get2ndLast().pathSegPoints.size() == 1 && currentPath.get2ndLast().clickPoints.size() == 1
+									&& !currentPath.get2ndLast().isDrawn)
+								currentPath.remove(currentPath.size() - 2);
+						} else if(!currentPath.getLast().isDrawn)
+							currentPath.removeLast();
 					}
 				} else if(currentPath.size() == 1 && currentPath.getLast().clickPoints.isEmpty() && currentPath.getLast().pathSegPoints.isEmpty() &&
 						!currentPath.getLast().isDrawn)
@@ -1109,14 +1115,14 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 								currentPath.get2ndLast().clickPoints.getLast().movable = false;
 								shouldSmooth = true;
 							}
-							if(pm != PrevMode.CLICKDRAW | smoothThings(point[0], point[1]))
+							if(pm != PrevMode.CLICKDRAW | smoothThings(point[0], point[1])) {
 								currentPath.getLast().pathSegPoints.add(new Point(point[0], point[1]));
-							else
+								pm = PrevMode.DRAW;
+							} else
 								currentPath.get2ndLast().clickPoints.getLast().movable = true;
 //							BetterArrayList<BetterArrayList<Point>> lr = leftRight(currentPath.getLast().pathSegPoints, robotTrackWidth);
 //							currentPath.getLast().leftPSPoints = lr.get(0);
 //							currentPath.getLast().rightPSPoints = lr.get(1);
-							pm = PrevMode.DRAW;
 						} else {//Handles going from click to draw mode
 							System.out.println("plsssssssssssssssssssssssssssssssssssssssssssss");
 							if(pm == PrevMode.DRAWCLICK) {
