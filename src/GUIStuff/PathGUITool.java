@@ -443,6 +443,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 						g2.draw(new Line2D.Double(lx1, ly1, lx2, ly2));
 						g2.fill(new Ellipse2D.Double(lx1 - 2, ly1 - 2, 4, 4));
 						g2.fill(new Ellipse2D.Double(lx2 - 2, ly2 - 2, 4, 4));
+						g2.setPaint(Color.lightGray);
 						g2.draw(new Line2D.Double(rx1, ry1, rx2, ry2));
 						g2.fill(new Ellipse2D.Double(rx1 - 2, ry1 - 2, 4, 4));
 						g2.fill(new Ellipse2D.Double(rx2 - 2, ry2 - 2, 4, 4));
@@ -664,11 +665,18 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	}
 
 	private boolean validatePoint(double x, double y, Point next) {
-		for(Polygon2D p : fg.invalidAreas)
-			if(p.name.equals("field border") ? p.out(x, y) : p.contains(x, y) || p.intersects(x, y, next)) {
+		for(Polygon2D p : fg.invalidAreas) {
+			if(next != null) {
+				if(p.name.equals("field border") ? p.out(x, y) | p.out(next.x, next.y) : (p.contains(x, y) | p.contains(next.x, next.y)) ||
+						p.intersects(x, y, next)) {
+					invalidElementName = p.name;
+					return false;
+				}
+			} else if(p.name.equals("field border") ? p.out(x, y) : p.contains(x, y)) {
 				invalidElementName = p.name;
 				return false;
 			}
+		}
 		return true;
 	}
 
@@ -878,7 +886,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 
 		@Override
 		public void mouseMoved(MouseEvent e) {
-			System.out.println("dan");
 			int[] point;
 			if((point = getCursorPixels(g.getRootPane().getMousePosition())) != null) {
 				java.awt.Point p = g.getRootPane().getMousePosition();
@@ -1098,8 +1105,9 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 							if(!currentPath.getLast().isDrawn && !currentPath.isEmpty()) {
 								System.out.println("why u no work?");
 								currentPath.add(new PathSegment(true));
-								currentPath.getLast().pathSegPoints.add(currentPath.get2ndLast().pathSegPoints.getLast());
+//								currentPath.getLast().pathSegPoints.add(currentPath.get2ndLast().pathSegPoints.getLast());
 								currentPath.get2ndLast().clickPoints.getLast().movable = false;
+								shouldSmooth = true;
 							}
 							smoothThings(point[0], point[1]);
 							currentPath.getLast().pathSegPoints.add(new Point(point[0], point[1]));
