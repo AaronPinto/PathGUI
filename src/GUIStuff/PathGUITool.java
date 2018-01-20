@@ -1173,7 +1173,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 					//called it will be the first time it has been called for this path with a new point, and update the previous draw state
 					redoBuffer.clear();
 					firstUndoRedo = true;
-					System.out.println(previousDraw + " " + drawMode + " shdSmth " + shouldSmooth + " " + pm);
+					System.out.println(previousDraw + " " + drawMode + " shdSmth " + shouldSmooth + " " + pm + " " + point[0] + " " + point[1]);
 					previousDraw = drawMode;
 				} else
 					showFieldError();
