@@ -366,7 +366,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
 		double width = getWidth();
-		System.out.println(height = getHeight());
+		height = getHeight();
 
 		//Draw X and Y lines axis.
 		Line2D.Double yaxis = new Line2D.Double(30, 10, 30, height - 30);
@@ -1109,8 +1109,10 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 								currentPath.get2ndLast().clickPoints.getLast().movable = false;
 								shouldSmooth = true;
 							}
-							smoothThings(point[0], point[1]);
-							currentPath.getLast().pathSegPoints.add(new Point(point[0], point[1]));
+							if(pm != PrevMode.CLICKDRAW | smoothThings(point[0], point[1]))
+								currentPath.getLast().pathSegPoints.add(new Point(point[0], point[1]));
+							else
+								currentPath.get2ndLast().clickPoints.getLast().movable = true;
 //							BetterArrayList<BetterArrayList<Point>> lr = leftRight(currentPath.getLast().pathSegPoints, robotTrackWidth);
 //							currentPath.getLast().leftPSPoints = lr.get(0);
 //							currentPath.getLast().rightPSPoints = lr.get(1);
