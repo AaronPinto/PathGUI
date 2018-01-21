@@ -116,18 +116,19 @@ public class FieldGenerator {
 			{54.001, 2.4741667},
 			{51.0, -0.001},
 			{54.001, -0.001},
+
 	};
 
 	{
 		LinkedHashMap<String, double[][]> invAreas = new LinkedHashMap<>();
 		invAreas.put("field border", fieldBorder);
-		invAreas.put("left switch frame", leftSwitchFrame);
 		invAreas.put("right switch frame", flipOverXAndY(leftSwitchFrame));
 		invAreas.put("scale", scaleMid);
 		invAreas.put("blue top portal", blueTopPortal);
 		invAreas.put("blue bot portal", flipOverXAxis(blueTopPortal));
 		invAreas.put("red bot portal", redBotPortal);
 		invAreas.put("red top portal", flipOverXAxis(redBotPortal));
+		invAreas.put("left switch frame", leftSwitchFrame);
 
 		invAreas.forEach((key, value) -> {
 			double[] xPoints = new double[value.length], yPoints = new double[value.length];

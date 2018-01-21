@@ -222,9 +222,9 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 					firstUndoRedo = false;
 					addPathSegment();
 				}
-				if(currentPath.getLast().isDrawn) {
+				if(currentPath.getLast().isDrawn)
 					redoBuffer.peekLast().pathSegPoints.add(currentPath.getLast().pathSegPoints.removeLast());
-				} else {
+				else {
 					redoBuffer.peekLast().clickPoints.add(currentPath.getLast().clickPoints.removeLast());
 					genPath(currentPath.getLast(), true);
 				}
@@ -672,8 +672,9 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	private boolean checkCircleArea(Point po) {
 		Area a = new Area(new Ellipse2D.Double(po.x - robotTrkWidth / 2.0, po.y - robotTrkWidth / 2.0, robotTrkWidth, robotTrkWidth));
 		for(Polygon2D p : fg.invalidAreas) {
-			a.intersect(new Area(p));
-			if(!p.name.equals("field border") && !a.isEmpty()) {
+			Area element = new Area(p);
+			element.intersect(a);
+			if(!p.name.equals("field border") && !element.isEmpty()) {
 				System.out.println("pls work lol");
 				invalidElementName = p.name;
 				return false;
