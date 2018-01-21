@@ -93,6 +93,7 @@ public class FieldGenerator {
 			{27.0 - incToFt(6.25), incToFt(97.25) + 10.791666},
 			{27.0 + incToFt(6.25), incToFt(97.25) + 10.791666},
 			{27.0 + incToFt(6.25), incToFt(97.25)},
+			{27.0 - incToFt(6.25), incToFt(97.25)},
 	};
 	private double[][] nullTop = new double[][]{
 			{incToFt(288.0), 0.0},
@@ -108,11 +109,13 @@ public class FieldGenerator {
 			{-0.001, 27.001},
 			{-0.001, 24.5258333},//27.0 - 2.4741667
 			{3.0, 27.001},
+			{-0.001, 27.001},
 	};
 	private double[][] redBotPortal = new double[][]{
 			{54.001, -0.001},
 			{54.001, 2.4741667},
 			{51.0, -0.001},
+			{54.001, -0.001},
 	};
 
 	{

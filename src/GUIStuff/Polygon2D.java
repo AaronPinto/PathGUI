@@ -32,24 +32,24 @@ public class Polygon2D implements Shape, Cloneable, Serializable {
 	 * The total number of points.  The value of <code>npoints</code>
 	 * represents the number of valid points in this <code>Polygon</code>.
 	 */
-	private int npoints;
+	int npoints;
 	/**
 	 * The array of <i>x</i> coordinates. The value of {@link #npoints npoints} is equal to the
 	 * number of points in this <code>Polygon2D</code>.
 	 */
-	private double[] xpoints;
+	double[] xpoints;
 	/**
 	 * The array of <i>x</i> coordinates. The value of {@link #npoints npoints} is equal to the
 	 * number of points in this <code>Polygon2D</code>.
 	 */
-	private double[] ypoints;
+	double[] ypoints;
 	/**
 	 * Bounds of the Polygon2D.
 	 *
 	 * @see #getBounds()
 	 */
 	private Rectangle2D bounds;
-	private Path2D path;
+	Path2D path;
 	private Path2D closedPath;
 
 	/**

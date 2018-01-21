@@ -8,9 +8,9 @@ import java.awt.datatransfer.ClipboardOwner;
 import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Transferable;
 import java.awt.event.*;
+import java.awt.geom.Area;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Line2D;
-import java.awt.geom.Rectangle2D;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
@@ -409,9 +409,13 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 
 		g2.setColor(Color.yellow);
 		for(Polygon2D poly : fg.invalidAreas) {
-			Rectangle2D.Double dank = new Rectangle2D.Double(poly.getBounds2D().getX(), poly.getBounds2D().getY(), poly.getBounds2D().getWidth(), poly.getBounds2D().getHeight());
-			dank.setRect(30 + dank.getX() * xScale, 10 + dank.getY() * yScale, dank.getWidth() * xScale, dank.getHeight() * yScale);
-			g2.draw(dank);
+			double[] xPoints = new double[poly.npoints], yPoints = new double[poly.npoints];
+			IntStream.range(0, poly.npoints).forEach(i -> {
+				xPoints[i] = 30 + xScale * poly.xpoints[i];
+				yPoints[i] = height - 30 - yScale * poly.ypoints[i];
+			});
+			Area a = new Area(new Polygon2D(xPoints, yPoints, xPoints.length, ""));
+			g2.draw(a);
 		}
 	}
 
@@ -666,13 +670,15 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	}
 
 	private boolean checkCircleArea(Point po) {
-		Ellipse2D e = new Ellipse2D.Double(po.x - robotTrkWidth / 2.0, po.y - robotTrkWidth / 2.0, robotTrkWidth, robotTrkWidth);
-		for(Polygon2D p : fg.invalidAreas)
-			if(!p.name.equals("field border") && e.intersects(p.getBounds2D())) {
+		Area a = new Area(new Ellipse2D.Double(po.x - robotTrkWidth / 2.0, po.y - robotTrkWidth / 2.0, robotTrkWidth, robotTrkWidth));
+		for(Polygon2D p : fg.invalidAreas) {
+			a.intersect(new Area(p));
+			if(!p.name.equals("field border") && !a.isEmpty()) {
 				System.out.println("pls work lol");
 				invalidElementName = p.name;
 				return false;
 			}
+		}
 		return true;
 	}
 
