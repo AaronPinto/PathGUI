@@ -1149,7 +1149,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 					if(drawMode)
 						if(previousDraw) {//Handles staying at draw mode
 							System.out.println("spicy");
-							if(!currentPath.getLast().isDrawn || currentPath.isEmpty())
+							if(currentPath.isEmpty() || !currentPath.getLast().isDrawn)
 								currentPath.add(new PathSegment(true));
 							if(pm == PrevMode.CLICKDRAW) {
 								currentPath.getLast().pathSegPoints.add(currentPath.get2ndLast().pathSegPoints.getLast());
