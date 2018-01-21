@@ -49,7 +49,7 @@ public class Polygon2D implements Shape, Cloneable, Serializable {
 	 * @see #getBounds()
 	 */
 	private Rectangle2D bounds;
-	Path2D path;
+	private Path2D path;
 	private Path2D closedPath;
 
 	/**
