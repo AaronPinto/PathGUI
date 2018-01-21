@@ -237,6 +237,11 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			JOptionPane.showConfirmDialog(g, "No More Undos!", "Undo Status", JOptionPane.DEFAULT_OPTION);
 	}
 
+//	private void instructions() {
+//		JFrame j = new JFrame("Instructions", new BoxLayout());
+//	}
+
+
 	private void redo() {
 		if(!redoBuffer.isEmpty()) {
 			/*
@@ -406,17 +411,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 
 		//plot data
 		plot(g2);
-
-//		g2.setColor(Color.yellow);
-//		for(Polygon2D poly : fg.invalidAreas) {
-//			double[] xPoints = new double[poly.npoints], yPoints = new double[poly.npoints];
-//			IntStream.range(0, poly.npoints).forEach(i -> {
-//				xPoints[i] = 30 + xScale * poly.xpoints[i];
-//				yPoints[i] = height - 30 - yScale * poly.ypoints[i];
-//			});
-//			Area a = new Area(new Polygon2D(xPoints, yPoints, xPoints.length, ""));
-//			g2.draw(a);
-//		}
 	}
 
 	private void plotPath(Graphics2D g2, BetterArrayList<PathSegment> path) {
@@ -841,6 +835,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	class KeyboardListener extends KeyAdapter {
 		@Override
 		public void keyPressed(KeyEvent e) {
+			System.out.println(e.getExtendedKeyCode());
 			if(e.isControlDown())
 				if(e.getExtendedKeyCode() == 90)//Ctrl + Z
 					undo();
@@ -854,7 +849,9 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 					toggleDrawMode();
 				else if(e.getExtendedKeyCode() == 79) //CTRL + O
 					open();
-			if(e.getExtendedKeyCode() == 16) shift = true;
+				else if(e.getExtendedKeyCode() == 73) //CTRL + I
+
+					if(e.getExtendedKeyCode() == 16) shift = true;
 		}
 
 		@Override
@@ -1124,8 +1121,10 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 					if(drawMode) {
 						if(previousDraw) {//Handles staying at draw mode
 							System.out.println("spicy");
-							if(currentPath.isEmpty() || !currentPath.getLast().isDrawn)
+							if(currentPath.isEmpty() || !currentPath.getLast().isDrawn) {
 								currentPath.add(new PathSegment(true));
+								currentPath.getLast().pathSegPoints.add(currentPath.get2ndLast().pathSegPoints.getLast());
+							}
 							if(pm == PrevMode.CLICKDRAW) {
 								currentPath.getLast().pathSegPoints.add(currentPath.get2ndLast().pathSegPoints.getLast());
 								currentPath.get2ndLast().clickPoints.getLast().movable = false;
