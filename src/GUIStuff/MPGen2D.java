@@ -202,12 +202,21 @@ public class MPGen2D {
 			for(int i = 1; i < path.length - 1; i++)
 				for(int j = 0; j < path[i].length; j++) {
 					double aux = newPath[i][j];
-					newPath[i][j] += weight_data * (path[i][j] - newPath[i][j]) + weight_smooth *
-							(newPath[i - 1][j] + newPath[i + 1][j] - (2.0 * newPath[i][j]));
+					newPath[i][j] += weight_data * (path[i][j] - newPath[i][j]) + weight_smooth * (newPath[i - 1][j] +
+							newPath[i + 1][j] - (2.0 * newPath[i][j]));
 					change += Math.abs(aux - newPath[i][j]);
 				}
 		}
 		return newPath;
+	}
+
+	/**
+	 * Optimization algorithm, which optimizes the data points in path to create a smooth trajectory.
+	 * This optimization uses gradient descent. While unlikely, it is possible for this algorithm to never
+	 * converge. If this happens, try increasing the tolerance level.
+	 */
+	public BetterArrayList<PathGUITool.Point> smoother(BetterArrayList<PathGUITool.Point> p, double wd, double ws, double tol) {
+		return PathGUITool.convert2DArray(smoother(PathGUITool.convertPointArray(p), wd, ws, tol));
 	}
 
 	public void calculate() {
