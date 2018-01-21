@@ -114,15 +114,17 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		menu.setMnemonic(KeyEvent.VK_F);
 		menuBar.add(menu);
 
-		JMenuItem menuItem = new JMenuItem("New Path", KeyEvent.VK_N);
+		//I cannot use menu item accelerators for the shortcuts because it makes it extremely laggy and unusable, so I specify the
+		//keyboard shortcuts in the name of the menu item.
+		JMenuItem menuItem = new JMenuItem("New Path (Ctrl + N)", KeyEvent.VK_N);
 		menuItem.addActionListener(ml);
 		menu.add(menuItem);
 
-		menuItem = new JMenuItem("Open", KeyEvent.VK_O);
+		menuItem = new JMenuItem("Open (Ctrl + O)", KeyEvent.VK_O);
 		menuItem.addActionListener(ml);
 		menu.add(menuItem);
 
-		menuItem = new JMenuItem("Save", KeyEvent.VK_S);
+		menuItem = new JMenuItem("Save (Ctrl + S)", KeyEvent.VK_S);
 		menuItem.addActionListener(ml);
 		menu.add(menuItem);
 
@@ -131,19 +133,19 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		menu.setMnemonic(KeyEvent.VK_E);
 		menuBar.add(menu);
 
-		menuItem = new JMenuItem("Undo", KeyEvent.VK_U);
+		menuItem = new JMenuItem("Undo (Ctrl + Z)", KeyEvent.VK_U);
 		menuItem.addActionListener(ml);
 		menu.add(menuItem);
 
-		menuItem = new JMenuItem("Redo", KeyEvent.VK_R);
+		menuItem = new JMenuItem("Redo (Ctrl + Y)", KeyEvent.VK_R);
 		menuItem.addActionListener(ml);
 		menu.add(menuItem);
 
-		menuItem = new JMenuItem("Toggle Draw Mode", KeyEvent.VK_D);
+		menuItem = new JMenuItem("Toggle Draw Mode (Ctrl + D)", KeyEvent.VK_D);
 		menuItem.addActionListener(ml);
 		menu.add(menuItem);
 
-		menuItem = new JMenuItem("Copy Points", KeyEvent.VK_C);
+		menuItem = new JMenuItem("Copy Points (Ctrl + C)", KeyEvent.VK_C);
 		menuItem.addActionListener(ml);
 		menu.add(menuItem);
 
@@ -151,6 +153,10 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		menu = new JMenu("Instructions");
 		menu.setMnemonic(KeyEvent.VK_I);
 		menuBar.add(menu);
+
+		menuItem = new JMenuItem("View Instructions (Ctrl + I)", KeyEvent.VK_I);
+		menuItem.addActionListener(ml);
+		menu.add(menuItem);
 
 		//Set the properties of this JFrame
 		g.add(this);
@@ -640,7 +646,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		if(pathGen.smoothPath != null) {
 			BetterArrayList<Point> temp = convert2DArray(pathGen.smoothPath);
 			BetterArrayList<BetterArrayList<Point>> lAndR = leftRight(temp, robotTrackWidth);
-			if(validatePathSegment(lAndR.get(0)) && validatePathSegment(lAndR.get(1))) {
+			if(checkCircleArea(temp) && validatePathSegment(lAndR.get(0)) && validatePathSegment(lAndR.get(1))) {
 				ps.pathSegPoints = temp;
 				ps.leftPSPoints = lAndR.get(0);
 				ps.rightPSPoints = lAndR.get(1);
@@ -652,6 +658,24 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				return false;
 			}
 		}
+		return true;
+	}
+
+	private boolean checkCircleArea(BetterArrayList<Point> temp) {
+		return temp.stream().allMatch(this::checkCircleArea);
+	}
+
+	private boolean checkCircleArea(double x, double y) {
+		return checkCircleArea(new Point(x, y));
+	}
+
+	private boolean checkCircleArea(Point po) {
+		Ellipse2D e = new Ellipse2D.Double(po.x, po.y, robotTrackWidth / 2.0, robotTrackWidth / 2.0);
+		for(Polygon2D p : fg.invalidAreas)
+			if(!p.name.equals("field border") && e.intersects(p.getBounds2D())) {
+				invalidElementName = p.name;
+				return false;
+			}
 		return true;
 	}
 
@@ -764,17 +788,17 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	class MenuListener implements ActionListener {
 		@Override
 		public void actionPerformed(ActionEvent e) {
-			if(e.getActionCommand().equals("Undo")) {//CTRL + Z
+			if(e.getActionCommand().equals("Undo (Ctrl + Z)")) {//CTRL + Z
 				undo();
-			} else if(e.getActionCommand().equals("Redo")) {//CTRL + Y
+			} else if(e.getActionCommand().equals("Redo (Ctrl + Y)")) {//CTRL + Y
 				redo();
-			} else if(e.getActionCommand().equals("Copy")) {//CTRL + C, Keycode for S = 83
+			} else if(e.getActionCommand().equals("Copy Points (Ctrl + C)")) {//CTRL + C, Keycode for S = 83
 				copy();
-			} else if(e.getActionCommand().equals("New Path") && !currentPath.isEmpty()) {//CTRL + N
+			} else if(e.getActionCommand().equals("New Path (Ctrl + N)") && !currentPath.isEmpty()) {//CTRL + N
 				newPath();
-			} else if(e.getActionCommand().equals("Toggle Draw Mode")) {//CTRL + D
+			} else if(e.getActionCommand().equals("Toggle Draw Mode (Ctrl + D)")) {//CTRL + D
 				toggleDrawMode();
-			} else if(e.getActionCommand().equals("Open")) {//CTRL + O
+			} else if(e.getActionCommand().equals("Open (Ctrl + O)")) {//CTRL + O
 				open();
 			}
 		}
@@ -1066,7 +1090,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 							if(pathGen.smoothPath != null) {
 								BetterArrayList<Point> temp = convert2DArray(pathGen.smoothPath);
 								BetterArrayList<BetterArrayList<Point>> lAndR = leftRight(temp, robotTrackWidth);
-								if(validatePathSegment(lAndR.get(0)) && validatePathSegment(lAndR.get(1))) {
+								if(checkCircleArea(temp) && validatePathSegment(lAndR.get(0)) && validatePathSegment(lAndR.get(1))) {
 									currentPath.getLast().pathSegPoints = temp;
 									currentPath.getLast().leftPSPoints = lAndR.get(0);
 									currentPath.getLast().rightPSPoints = lAndR.get(1);
@@ -1105,8 +1129,9 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			//Get the mouse position (x, y) on the window, constrain it to the field borders and convert it to feet.
 			double[] point;
 			if((point = getCursorFeet(g.getRootPane().getMousePosition())) != null) {
-				if(validatePoint(point[0], point[1], currentPath.isEmpty() ? null : currentPath.getLast().pathSegPoints.isEmpty() ? null :
-						currentPath.getLast().isDrawn ? currentPath.getLast().pathSegPoints.getLast() : currentPath.getLast().clickPoints.getLast())) {
+				Point prev = currentPath.isEmpty() ? null : currentPath.getLast().pathSegPoints.isEmpty() ? null : currentPath.getLast().isDrawn ?
+						currentPath.getLast().pathSegPoints.getLast() : currentPath.getLast().clickPoints.getLast();
+				if(checkCircleArea(point[0], point[1]) && validatePoint(point[0], point[1], prev)) {
 					if(drawMode)
 						if(previousDraw) {//Handles staying at draw mode
 							System.out.println("spicy");
@@ -1129,16 +1154,21 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 //							currentPath.getLast().rightPSPoints = lr.get(1);
 						} else {//Handles going from click to draw mode
 							System.out.println("plsssssssssssssssssssssssssssssssssssssssssssss");
-							if(pm == PrevMode.DRAWCLICK) {
+							if(!currentPath.isEmpty() && currentPath.getLast().isDrawn) {
+								simDrawClick(point[0], point[1]);
+								pm = PrevMode.CLICKDRAW;
+							} else if(pm == PrevMode.DRAWCLICK) {
 								if(!currentPath.isEmpty() && currentPath.getLast().pathSegPoints.isEmpty())
 									currentPath.removeLast();
 								simClick(point[0], point[1]);
 								currentPath.add(new PathSegment(true));
 								if(currentPath.size() > 1)
 									shouldSmooth = true;
-							} else if(pm == PrevMode.UNDO || pm == PrevMode.REDO)
+								pm = PrevMode.CLICKDRAW;
+							} else if(pm == PrevMode.UNDO || pm == PrevMode.REDO) {
 								simDrawClick(point[0], point[1]);
-							else {
+								pm = PrevMode.CLICKDRAW;
+							} else {
 								if(currentPath.isEmpty())
 									currentPath.add(new PathSegment(false));
 								currentPath.getLast().clickPoints.add(new Point(point[0], point[1], false));
@@ -1151,12 +1181,12 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 								currentPath.add(new PathSegment(true));
 								if(currentPath.size() > 1)
 									shouldSmooth = true;
+								pm = PrevMode.CLICKDRAW;
 							}
-							pm = PrevMode.CLICKDRAW;
 						}
 					else if(previousDraw) {//Handles going from draw to click mode
 						System.out.println("SAJEGNJKGNJKASN");
-						if(pm == PrevMode.CLICKDRAW) {
+						if(pm == PrevMode.CLICKDRAW && !currentPath.getLast().isDrawn) {
 							if(!currentPath.isEmpty() && currentPath.getLast().pathSegPoints.isEmpty())
 								currentPath.removeLast();
 							simClick(point[0], point[1]);
@@ -1167,7 +1197,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 						System.out.println("dank");
 						if(pm == PrevMode.UNDO || pm == PrevMode.REDO)
 							simDrawClick(point[0], point[1]);
-						else if(currentPath.getLast().isDrawn)
+						else if(!currentPath.isEmpty() && currentPath.getLast().isDrawn)
 							simDrawClick(point[0], point[1]);
 						else
 							simClick(point[0], point[1]);
