@@ -73,7 +73,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	//pixels per foot for each axis, respectively, yTickYMax and Min are the max and min values of the y-axis in pixels,
 	//rectWidth and Height are the width and height of the field border in pixels, robotTrkWidth is the track width of the
 	//robot in feet, and ppiX and Y are the pixels per inch for each axis respectively.
-	private double xScale, yScale, yTickYMax = 0, yTickYMin = 0, rectWidth, rectHeight, robotTrkWidth = 28.0 / 12.0, ppiX, ppiY;
+	private double xScale, yScale, yTickYMax = 0, yTickYMin = 0, rectWidth, rectHeight, robotTrkWidth = 24.0889 / 12.0, ppiX, ppiY;
 
 	//Height is an integer which stores the height of this panel in pixels.
 	private int height;
@@ -407,16 +407,16 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		//plot data
 		plot(g2);
 
-		g2.setColor(Color.yellow);
-		for(Polygon2D poly : fg.invalidAreas) {
-			double[] xPoints = new double[poly.npoints], yPoints = new double[poly.npoints];
-			IntStream.range(0, poly.npoints).forEach(i -> {
-				xPoints[i] = 30 + xScale * poly.xpoints[i];
-				yPoints[i] = height - 30 - yScale * poly.ypoints[i];
-			});
-			Area a = new Area(new Polygon2D(xPoints, yPoints, xPoints.length, ""));
-			g2.draw(a);
-		}
+//		g2.setColor(Color.yellow);
+//		for(Polygon2D poly : fg.invalidAreas) {
+//			double[] xPoints = new double[poly.npoints], yPoints = new double[poly.npoints];
+//			IntStream.range(0, poly.npoints).forEach(i -> {
+//				xPoints[i] = 30 + xScale * poly.xpoints[i];
+//				yPoints[i] = height - 30 - yScale * poly.ypoints[i];
+//			});
+//			Area a = new Area(new Polygon2D(xPoints, yPoints, xPoints.length, ""));
+//			g2.draw(a);
+//		}
 	}
 
 	private void plotPath(Graphics2D g2, BetterArrayList<PathSegment> path) {
@@ -995,13 +995,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		@Override
 		public void mouseReleased(MouseEvent e) {
 			System.out.println("IIIIIIIIIIIIIITTTTTTTTTTTTTTTTTTTTTTTTTTTTSSSSSSSSSSSSSSSSSSSSSSSS LITTTTTTTTTTTTTTTTTTTTTTT");
-			if(!currentPath.isEmpty() && currentPath.getLast().isDrawn && !currentPath.getLast().pathSegPoints.isEmpty()) {
-				currentPath.getLast().pathSegPoints = pathGen.smoother(currentPath.getLast().pathSegPoints, 0.09, 0.9, 0.00001);
-				BetterArrayList<BetterArrayList<Point>> lr = leftRight(currentPath.getLast().pathSegPoints, robotTrkWidth);
-				currentPath.getLast().leftPSPoints = lr.get(0);
-				currentPath.getLast().rightPSPoints = lr.get(1);
-			}
-			fig.repaint();
 		}
 
 		@Override
@@ -1057,25 +1050,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			}
 			return false;
 		}
-
-//		private boolean smoothThings(double x, double y) {
-//			if(currentPath.size() > 1 && shouldSmooth) {
-//				shouldSmooth = false;
-//				System.out.println("its ya boi");
-//				if(currentPath.get2ndLast().clickPoints.size() > 1)
-//					currentPath.get2ndLast().clickPoints.getLast().movable = false;
-//				if(currentPath.getLast().isDrawn) {
-//					System.out.println("its actually ya boi");
-//					currentPath.get2ndLast().clickPoints.add(new Point(x, y, false));
-//					if(genPath(currentPath.get2ndLast(), true))
-//						return true;
-//					else
-//						shouldSmooth = true;
-//					return false;
-//				}
-//			}
-//			return false;
-//		}
 
 		private void simClick(double x, double y) {
 			if(currentPath.isEmpty())
@@ -1147,7 +1121,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				Point prev = currentPath.isEmpty() ? null : currentPath.getLast().pathSegPoints.isEmpty() ? null : currentPath.getLast().isDrawn ?
 						currentPath.getLast().pathSegPoints.getLast() : currentPath.getLast().clickPoints.getLast();
 				if(checkCircleArea(point[0], point[1]) && validatePoint(point[0], point[1], prev)) {
-					if(drawMode)
+					if(drawMode) {
 						if(previousDraw) {//Handles staying at draw mode
 							System.out.println("spicy");
 							if(currentPath.isEmpty() || !currentPath.getLast().isDrawn)
@@ -1156,7 +1130,19 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 								currentPath.getLast().pathSegPoints.add(currentPath.get2ndLast().pathSegPoints.getLast());
 								currentPath.get2ndLast().clickPoints.getLast().movable = false;
 							}
-							currentPath.getLast().pathSegPoints.add(new Point(point[0], point[1]));
+							if(!currentPath.isEmpty() && currentPath.getLast().isDrawn) {
+								currentPath.getLast().pathSegPoints.add(new Point(point[0], point[1]));
+								BetterArrayList<Point> temp = pathGen.smoother(currentPath.getLast().pathSegPoints, 0.09, 0.9, 0.000001);
+								BetterArrayList<BetterArrayList<Point>> lr = leftRight(currentPath.getLast().pathSegPoints, robotTrkWidth);
+								if(checkCircleArea(temp) && validatePathSegment(lr.get(0)) && validatePathSegment(lr.get(1))) {
+									currentPath.getLast().pathSegPoints = temp;
+									currentPath.getLast().leftPSPoints = lr.get(0);
+									currentPath.getLast().rightPSPoints = lr.get(1);
+								} else {
+									currentPath.getLast().pathSegPoints.removeLast();
+									showFieldError();
+								}
+							}
 							pm = PrevMode.DRAW;
 						} else {//Handles going from click to draw mode
 							System.out.println("plsssssssssssssssssssssssssssssssssssssssssssss");
@@ -1181,7 +1167,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 							}
 							pm = PrevMode.CLICKDRAW;
 						}
-					else if(previousDraw) {//Handles going from draw to click mode
+					} else if(previousDraw) {//Handles going from draw to click mode
 						System.out.println("SAJEGNJKGNJKASN");
 						if(pm == PrevMode.CLICKDRAW && !currentPath.getLast().isDrawn) {
 							if(!currentPath.isEmpty() && currentPath.getLast().pathSegPoints.isEmpty())
