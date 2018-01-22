@@ -1176,12 +1176,11 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 							System.out.println("spicy");
 							if(currentPath.isEmpty() || !currentPath.getLast().isDrawn)
 								currentPath.add(new PathSegment(true));
-							if(currentPath.size() > 1 && !currentPath.get2ndLast().isDrawn)
+							if((pm == PrevMode.CLICKDRAW || pm == PrevMode.UNDO || pm == PrevMode.REDO) && currentPath.size() > 1 &&
+									!currentPath.get2ndLast().isDrawn)
 								currentPath.getLast().pathSegPoints.add(currentPath.get2ndLast().pathSegPoints.getLast());
-							if(pm == PrevMode.CLICKDRAW && currentPath.size() > 1) {
-								currentPath.getLast().pathSegPoints.add(currentPath.get2ndLast().pathSegPoints.getLast());
+							if(pm == PrevMode.CLICKDRAW && !currentPath.isEmpty() && !currentPath.getLast().isDrawn)
 								currentPath.get2ndLast().clickPoints.getLast().movable = false;
-							}
 							if(!currentPath.isEmpty() && currentPath.getLast().isDrawn) {
 								currentPath.getLast().pathSegPoints.add(new Point(point[0], point[1]));
 								BetterArrayList<Point> temp = pathGen.smoother(currentPath.getLast().pathSegPoints, 0.09, 0.9, 0.000001);
