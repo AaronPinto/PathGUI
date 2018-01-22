@@ -150,6 +150,10 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		menuItem.addActionListener(ml);
 		menu.add(menuItem);
 
+		menuItem = new JMenuItem("Clear All (Ctrl + A)", KeyEvent.VK_A);
+		menuItem.addActionListener(ml);
+		menu.add(menuItem);
+
 		//Build third menu in the menu bar.
 		menu = new JMenu("Instructions");
 		menu.setMnemonic(KeyEvent.VK_I);
@@ -206,6 +210,14 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		return Arrays.stream(p).map(aP -> new Point(aP[0], aP[1])).collect(Collectors.toCollection(BetterArrayList::new));
 	}
 
+	/**
+	 * A function that takes a BetterArrayList as an argument, and performs a deep copy of tall the values
+	 * A deep copy means that an object is copied along with all the object to which it refers. In this case, all
+	 * the values of the objects that the BetterArrayList refer to are copied into a new double array, which is then returned.
+	 *
+	 * @param p the BetterArrayList to convert to a 2d double array
+	 * @return a 2d double array containing all the points from the BetterArrayList
+	 */
 	public static double[][] convertPointArray(BetterArrayList<Point> p) {
 		double[][] temp = new double[p.size()][2];
 		IntStream.range(0, p.size()).forEach(i -> {
@@ -292,7 +304,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				fw.close();
 				JOptionPane.showConfirmDialog(g, "Points Saved Successfully!", "Points Saver",
 						JOptionPane.DEFAULT_OPTION);
-				System.exit(0);
 			}
 		} catch(IOException e) {
 			e.printStackTrace();
@@ -343,6 +354,20 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	private void toggleDrawMode() {
 		drawMode = !drawMode;
 		JOptionPane.showMessageDialog(g, String.format("Draw mode set to %b", drawMode), "Draw Mode Status", JOptionPane.INFORMATION_MESSAGE);
+	}
+
+	private void clear() {
+		if(!currentPath.isEmpty() || !paths.isEmpty()) {
+			int response = JOptionPane.showConfirmDialog(g, "Are you sure you want to clear everything?", "Window Clearer",
+					JOptionPane.YES_NO_CANCEL_OPTION);
+			if(response == JOptionPane.YES_OPTION) {
+				currentPath.clear();
+				paths.clear();
+				redoBuffer.clear();
+				previousDraw = firstUndoRedo = shift = false;
+				fig.repaint();
+			}
+		}
 	}
 
 	private void open() {
@@ -855,6 +880,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			else if(e.getActionCommand().equals("Open (Ctrl + O)")) open();//CTRL + O
 			else if(e.getActionCommand().equals("View Instructions (Ctrl + I)")) instructions();//CTRL + I
 			else if(e.getActionCommand().equals("Save (Ctrl + S)")) save();//CTRL + S
+			else if(e.getActionCommand().equals("Clear All (Ctrl + A)")) clear();//CTRL + A
 		}
 	}
 
@@ -883,6 +909,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 					instructions();
 				else if(e.getExtendedKeyCode() == 83)//CTRL + S
 					save();
+				else if(e.getExtendedKeyCode() == 65)//CTRL + A
+					clear();
 
 			//Shift is set to true for as long as a shift key is held down.
 			//Used for the shift-clicking path functionality
@@ -908,7 +936,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 						JOptionPane.YES_NO_CANCEL_OPTION);
 				if(response == JOptionPane.YES_OPTION)
 					save();
-				else if(response == JOptionPane.NO_OPTION) System.exit(0);
+				System.exit(0);
 			} else System.exit(0);
 		}
 	}
@@ -1027,6 +1055,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 										temp.y = (int) (po.y * yScale) + l;
 										if(p.equals(temp))
 											if(b.compareAndSet(false, true)) {
+												JOptionPane.showMessageDialog(g, "Successfully switched paths!",
+														"Path Switcher", JOptionPane.INFORMATION_MESSAGE);
 												System.out.println("96-33");
 												BetterArrayList<PathSegment> swap = currentPath;
 												currentPath = paths.get(key);
