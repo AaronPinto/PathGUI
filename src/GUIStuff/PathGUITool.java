@@ -25,7 +25,7 @@ import java.util.stream.IntStream;
  * The program takes the mouse position on the field drawn in the GUI and then based off of that, when the mouse button is
  * clicked, it adds that point to a series of points, called a PathSegment, and generates a path accordingly. This is called
  * click mode. The path generation will either be based off of the generator that we currently use or I will redo it using cubic
- * spline interpolation. Either way, the filename is MPGen2D. Drag mode is toggleable off/on (Ctrl + D) and by default it is on,
+ * spline interpolation. Either way, the filename is MPGen2D. Draw mode is toggleable off/on (Ctrl + D) and by default it is on,
  * which means you can use it in tandem with click mode, and it automatically switches depending on whether or not you hold the
  * left button on your mouse down or not. Draw mode essentially allows you to draw a path yourself without having to generate one
  * each time. It allows for more freedom of design regarding the path that the robot follows. The program also has various
@@ -237,10 +237,66 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			JOptionPane.showConfirmDialog(g, "No More Undos!", "Undo Status", JOptionPane.DEFAULT_OPTION);
 	}
 
-//	private void instructions() {
-//		JFrame j = new JFrame("Instructions", new BoxLayout());
-//	}
+	/**
+	 * Function that creates a new JFrame with  JLabel to display the instructions on how to use this program.
+	 */
+	private void instructions() {
+		JFrame j = new JFrame("Instructions");
+		j.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+		j.addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosing(WindowEvent e) {
+				g.setEnabled(true);
+				j.dispose();
+			}
+		});
+		j.setSize(710, 400);
+		j.setLayout(new BorderLayout(10, 10));
+		j.setLocationRelativeTo(null);
+		j.setResizable(false);
+		String text = "The program takes the mouse position on the field drawn in the GUI and then based off of that, when the mouse" +
+				" button is clicked, it adds that point to a series of points, called a PathSegment, and generates a path accordingly. This is " +
+				"called click mode. Draw mode is toggleable off/on (Ctrl + D) and by default it is on, which means you can use it in tandem with " +
+				"click mode, and it automatically switches depending on whether or not you hold the left button on your mouse down or not. Draw " +
+				"mode essentially allows you to draw a path yourself without having to generate one each time. It allows for more freedom of design " +
+				"regarding the path that the robot follows. The program also has various keyboard shortcuts to make it more intuitive and easy to " +
+				"use. Ctrl + C to copy points on the path in proper Java syntax for a 2D array (Ctrl + V to paste outside of the program), Ctrl + N " +
+				"to keep the old paths and start a new one if, for example, you want the robot to follow multiple paths in auto, Ctrl + Z removes " +
+				"each point on the current path and Ctrl + Y adds that point back plus you can hold down the keys and it will rapidly get rid of " +
+				"each point, Ctrl + O to open and parse a file containing waypoints in proper Java 2D array format, and then display the paths" +
+				" from that file, and Ctrl + S to save your points to a file, again in proper Java syntax for a 2D array. You can also shift-click " +
+				"a path to start editing it again in case you realized you made a mistake or you want to change a curve. There may be some other " +
+				"keyboard shortcuts not documented in these instructions/description but just check the menu and see what they do. The program " +
+				"also has mnemonics that you can use if you don't know how to use keyboard shortcuts or something.";
+		JLabel l = new JLabel("<html><div style='text-align: center;'>" + text + "</div></html>", SwingConstants.CENTER);
+		l.setFont(new Font("Arial", Font.PLAIN, 16));
+		l.setSize(710, 400);
+		j.add(l);
+		j.setVisible(true);
+		g.setEnabled(false);
+	}
 
+	private void save() {
+		try {
+			Calendar c = Calendar.getInstance();
+			JFileChooser jfc = new JFileChooser();
+			jfc.setFileFilter(new FileNameExtensionFilter("Text Files", "txt", "TXT"));
+			jfc.setSelectedFile(new File(String.format("%tB%te%tY-%tl%tM%tS%tp.txt", c, c, c, c, c, c, c)));
+			if(jfc.showSaveDialog(g) == JFileChooser.APPROVE_OPTION) {
+				if(!jfc.getSelectedFile().getAbsolutePath().endsWith(".txt") && !jfc.getSelectedFile().getAbsolutePath().endsWith(".TXT"))
+					jfc.setSelectedFile(new File(jfc.getSelectedFile().getAbsolutePath() + ".txt"));
+				FileWriter fw = new FileWriter(jfc.getSelectedFile().getAbsolutePath());
+				fw.write(output2DArray());
+				fw.flush();
+				fw.close();
+				JOptionPane.showConfirmDialog(g, "Points Saved Successfully!", "Points Saver",
+						JOptionPane.DEFAULT_OPTION);
+				System.exit(0);
+			}
+		} catch(IOException e) {
+			e.printStackTrace();
+		}
+	}
 
 	private void redo() {
 		if(!redoBuffer.isEmpty()) {
@@ -786,49 +842,14 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	class MenuListener implements ActionListener {
 		@Override
 		public void actionPerformed(ActionEvent e) {
-			if(e.getActionCommand().equals("Undo (Ctrl + Z)")) {//CTRL + Z
-				undo();
-			} else if(e.getActionCommand().equals("Redo (Ctrl + Y)")) {//CTRL + Y
-				redo();
-			} else if(e.getActionCommand().equals("Copy Points (Ctrl + C)")) {//CTRL + C, Keycode for S = 83
-				copy();
-			} else if(e.getActionCommand().equals("New Path (Ctrl + N)") && !currentPath.isEmpty()) {//CTRL + N
-				newPath();
-			} else if(e.getActionCommand().equals("Toggle Draw Mode (Ctrl + D)")) {//CTRL + D
-				toggleDrawMode();
-			} else if(e.getActionCommand().equals("Open (Ctrl + O)")) {//CTRL + O
-				open();
-			}
-		}
-	}
-
-	class WindowListener extends WindowAdapter {
-		public void windowClosing(WindowEvent e) {
-			if(!paths.isEmpty() || (!currentPath.isEmpty() && !currentPath.get(0).pathSegPoints.isEmpty())) {
-				int response = JOptionPane.showConfirmDialog(g, "Do you want to save your points?", "Point Saver",
-						JOptionPane.YES_NO_CANCEL_OPTION);
-				if(response == JOptionPane.YES_OPTION)
-					try {
-						Calendar c = Calendar.getInstance();
-						JFileChooser jfc = new JFileChooser();
-						jfc.setFileFilter(new FileNameExtensionFilter("Text Files", "txt", "TXT"));
-						jfc.setSelectedFile(new File(String.format("%tB%te%tY-%tl%tM%tS%tp.txt", c, c, c, c, c, c, c)));
-						if(jfc.showSaveDialog(g) == JFileChooser.APPROVE_OPTION) {
-							if(!jfc.getSelectedFile().getAbsolutePath().endsWith(".txt") && !jfc.getSelectedFile().getAbsolutePath().endsWith(".TXT"))
-								jfc.setSelectedFile(new File(jfc.getSelectedFile().getAbsolutePath() + ".txt"));
-							FileWriter fw = new FileWriter(jfc.getSelectedFile().getAbsolutePath());
-							fw.write(output2DArray());
-							fw.flush();
-							fw.close();
-							JOptionPane.showConfirmDialog(g, "Points Saved Successfully!", "Points Saver",
-									JOptionPane.DEFAULT_OPTION);
-							System.exit(0);
-						}
-					} catch(IOException e1) {
-						e1.printStackTrace();
-					}
-				else if(response == JOptionPane.NO_OPTION) System.exit(0);
-			} else System.exit(0);
+			if(e.getActionCommand().equals("Undo (Ctrl + Z)")) undo();//CTRL + Z
+			else if(e.getActionCommand().equals("Redo (Ctrl + Y)")) redo();//CTRL + Y
+			else if(e.getActionCommand().equals("Copy Points (Ctrl + C)")) copy();//CTRL + C
+			else if(e.getActionCommand().equals("New Path (Ctrl + N)") && !currentPath.isEmpty()) newPath();//CTRL + N
+			else if(e.getActionCommand().equals("Toggle Draw Mode (Ctrl + D)")) toggleDrawMode();//CTRL + D
+			else if(e.getActionCommand().equals("Open (Ctrl + O)")) open();//CTRL + O
+			else if(e.getActionCommand().equals("View Instructions (Ctrl + I)")) instructions();//CTRL + I
+			else if(e.getActionCommand().equals("Save (Ctrl + S)")) save();//CTRL + S
 		}
 	}
 
@@ -839,24 +860,39 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			if(e.isControlDown())
 				if(e.getExtendedKeyCode() == 90)//Ctrl + Z
 					undo();
-				else if(e.getExtendedKeyCode() == 89) //CTRL + Y
+				else if(e.getExtendedKeyCode() == 89)//CTRL + Y
 					redo();
-				else if(e.getExtendedKeyCode() == 67) //CTRL + C, Keycode for S = 83
+				else if(e.getExtendedKeyCode() == 67)//CTRL + C
 					copy();
-				else if(e.getExtendedKeyCode() == 78 && !currentPath.isEmpty()) //CTRL + N
+				else if(e.getExtendedKeyCode() == 78 && !currentPath.isEmpty())//CTRL + N
 					newPath();
-				else if(e.getExtendedKeyCode() == 68) //CTRL + D
+				else if(e.getExtendedKeyCode() == 68)//CTRL + D
 					toggleDrawMode();
-				else if(e.getExtendedKeyCode() == 79) //CTRL + O
+				else if(e.getExtendedKeyCode() == 79)//CTRL + O
 					open();
-				else if(e.getExtendedKeyCode() == 73) //CTRL + I
+				else if(e.getExtendedKeyCode() == 73)//CTRL + I
+					instructions();
+				else if(e.getExtendedKeyCode() == 83)//CTRL + S
+					save();
 
-					if(e.getExtendedKeyCode() == 16) shift = true;
+			if(e.getExtendedKeyCode() == 16) shift = true;
 		}
 
 		@Override
 		public void keyReleased(KeyEvent e) {
 			if(e.getExtendedKeyCode() == 16) shift = false;
+		}
+	}
+
+	class WindowListener extends WindowAdapter {
+		public void windowClosing(WindowEvent e) {
+			if(!paths.isEmpty() || (!currentPath.isEmpty() && !currentPath.get(0).pathSegPoints.isEmpty())) {
+				int response = JOptionPane.showConfirmDialog(g, "Do you want to save your points?", "Point Saver",
+						JOptionPane.YES_NO_CANCEL_OPTION);
+				if(response == JOptionPane.YES_OPTION)
+					save();
+				else if(response == JOptionPane.NO_OPTION) System.exit(0);
+			} else System.exit(0);
 		}
 	}
 
@@ -989,10 +1025,10 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				updateWaypoints(false);
 		}
 
-		@Override
-		public void mouseReleased(MouseEvent e) {
-			System.out.println("IIIIIIIIIIIIIITTTTTTTTTTTTTTTTTTTTTTTTTTTTSSSSSSSSSSSSSSSSSSSSSSSS LITTTTTTTTTTTTTTTTTTTTTTT");
-		}
+//		@Override
+//		public void mouseReleased(MouseEvent e) {
+//			System.out.println("IIIIIIIIIIIIIITTTTTTTTTTTTTTTTTTTTTTTTTTTTSSSSSSSSSSSSSSSSSSSSSSSS LITTTTTTTTTTTTTTTTTTTTTTT");
+//		}
 
 		@Override
 		public void mousePressed(MouseEvent e) {
