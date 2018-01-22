@@ -73,7 +73,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	//pixels per foot for each axis, respectively, yTickYMax and Min are the max and min values of the y-axis in pixels,
 	//rectWidth and Height are the width and height of the field border in pixels, robotTrkWidth is the track width of the
 	//robot in feet, and ppiX and Y are the pixels per inch for each axis respectively.
-	private double xScale, yScale, yTickYMax = 0, yTickYMin = 0, rectWidth, rectHeight, robotTrkWidth = 24.0889 / 12.0, ppiX, ppiY;
+	private double xScale, yScale, rectWidth, rectHeight, robotTrkWidth = 24.0889 / 12.0, ppiX, ppiY;
 
 	//Height is an integer which stores the height of this panel in pixels.
 	private int height;
@@ -454,11 +454,18 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 
 	/**
 	 * The central method which paints the panel and shows the figure and is called every time an event occurs to update the GUI.
+	 * In this method, we cast the Graphics object copy to a Graphics2D object, which is better suited for our purposes of drawing
+	 * 2D shapes and objects. Then, we store the width and height of this JPanel in double variables so that they may be used later
+	 * without having to call the functions multiple times. Next, we draw the axes, grid lines, field elements, field border, and then
+	 * all of the path data. We also figure out the ratio for feet to pixels in both the x and y directions, which is used for drawing
+	 * a path in the correct spot on the field, and also the ratio for pixels per inch in the x and y directions, which is used to provide
+	 * a buffer area for paths so that you don't have to make it perfectly perpendicular to the border.
 	 */
 	@Override
 	protected void paintComponent(Graphics g) {
 		super.paintComponent(g);
 		Graphics2D g2 = (Graphics2D) g;
+		//Gotta enable antialiasing for that quality rendering of shapes :P
 		g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
 		double width = getWidth();
@@ -473,7 +480,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		//draw ticks (the light gray grid lines and the numbers)
 		double yMax = 27.0, xMax = 54.0;
 		drawYTickRange(g2, yaxis, yMax);
-		drawXTickRange(g2, xaxis, xMax);
+		drawXTickRange(g2, xaxis, yaxis.getY1(), yaxis.getY2(), xMax);
 
 		//draw the field and everything on it
 		rectWidth = (xaxis.getX2() - xaxis.getX1());
@@ -495,10 +502,21 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		plot(g2);
 	}
 
+	/**
+	 * This is the function that plots everything in a path, so clickPoints (if applicable), pathSegPoints, leftPoints, and rightPoints.
+	 * It draws a circle of radius 2 pixels around each non-clicked point and a circle of radius 3 around each clicked point. This is why
+	 * a path may appear to be crossing a field element, when in reality it is not because the edge of the robot ends at the value of the point.
+	 * This function also draws a line between each point to show that they are all connected in the same path.
+	 *
+	 * @param g2   the 2D graphics object used to draw everything
+	 * @param path the path to draw/plot
+	 */
 	private void plotPath(Graphics2D g2, BetterArrayList<PathSegment> path) {
 		System.out.println("number of path segments: " + path.size() + " " + pm);
+		//For each path segment print out the corresponding points.
 		path.forEach(aPath -> {
 			System.out.println(aPath.pathSegPoints.size() + " " + aPath.clickPoints.size() + " " + aPath.isDrawn);
+			//Draw clicked points
 			if(aPath.clickPoints.size() > 1)
 				IntStream.range(0, aPath.clickPoints.size() - 1).forEach(j -> {
 					double x1 = 30 + xScale * aPath.clickPoints.get(j).x, y1 = height - 30 - yScale * aPath.clickPoints.get(j).y,
@@ -514,6 +532,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				g2.fill(new Ellipse2D.Double(x1 - 3, y1 - 3, 6, 6));
 			}
 
+			//Draw all the pathSegPoints, leftPoints and rightPoints
 			if(aPath.pathSegPoints.size() > 1)
 				IntStream.range(0, aPath.pathSegPoints.size() - 1).forEach(j -> {
 					double x1 = 30 + xScale * aPath.pathSegPoints.get(j).x, y1 = height - 30 - yScale * aPath.pathSegPoints.get(j).y,
@@ -548,6 +567,12 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		});
 	}
 
+	/**
+	 * This function plots all the paths in the current user session. It stores the last color of the Graphics object and then resets
+	 * the Graphics object to that color after.
+	 *
+	 * @param g2 the 2D graphics object used to draw everything
+	 */
 	private void plot(Graphics2D g2) {
 		Color tempC = g2.getColor();
 
@@ -558,7 +583,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	}
 
 	/**
-	 * Just so you don't get confused, this draws the horizontal light gray lines.
+	 * Just so you don't get confused, this function draws the numbers and ticks along the y-axis and the horizontal light gray lines.
+	 * <a href="http://www.purplemath.com/modules/distform.htm">Distance Formula</a>
 	 *
 	 * @param g2    The Graphics2D object for this window
 	 * @param yaxis The line that represents the y-axis
@@ -567,23 +593,27 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	private void drawYTickRange(Graphics2D g2, Line2D yaxis, double Max) {
 		double upperYtic = Math.ceil(Max);
 
+		//The starting and ending x and y values for the y-axis
 		double x0 = yaxis.getX1();
 		double y0 = yaxis.getY1();
 		double xf = yaxis.getX2();
 		double yf = yaxis.getY2();
 
-		//calculate stepsize between ticks and length of Y axis using distance formula
+		//calculate step-size between ticks and length of Y axis using distance formula
+		//Total distance of the axis / number of ticks = distance per tick
 		double distance = Math.sqrt(Math.pow((xf - x0), 2) + Math.pow((yf - y0), 2)) / upperYtic;
 
-		double upper = upperYtic, newY = 0;
-		yTickYMax = y0;
+		double upper = upperYtic;
+		//Iterates through each number from 0 to the max length of the y-axis in feet and draws the horizontal grid
+		//lines for each iteration except the last one
 		for(int i = 0; i <= upperYtic; i++) {
-			newY = y0;
+			double newY = y0;
 			//calculate width of number for proper drawing
 			String number = new DecimalFormat("#.#").format(upper);
 			FontMetrics fm = getFontMetrics(getFont());
 			int width = fm.stringWidth(number);
 
+			//Draws a tick line and the corresponding number at that value in black
 			g2.draw(new Line2D.Double(x0, newY, x0 - 10, newY));
 			g2.drawString(number, (float) x0 - 15 - width, (float) newY + 5);
 
@@ -592,64 +622,69 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				Stroke tempS = g2.getStroke();
 				Color tempC = g2.getColor();
 
+				//Sets the color and stroke to light gray dashes and draws them all the way across the JPanel
 				g2.setColor(Color.lightGray);
 				g2.setStroke(new BasicStroke(1f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1f, new float[]{5f}, 0f));
-
 				g2.draw(new Line2D.Double(30, newY, getWidth(), newY));
 
 				g2.setColor(tempC);
 				g2.setStroke(tempS);
 			}
+			//Increment the number to draw and the position of the tick
 			upper -= 1;
 			y0 = newY + distance;
 		}
-		yTickYMin = newY;
 	}
 
 	/**
-	 * Just so you don't get confused, this draws the vertical light gray lines.
+	 * Just so you don't get confused, this function draws the numbers and ticks along the x-axis and the vertical light gray lines.
+	 * <a href="http://www.purplemath.com/modules/distform.htm">Distance Formula</a>
 	 *
 	 * @param g2    The Graphics2D object for this window
 	 * @param xaxis The line that represents the x-axis
 	 * @param Max   The width of the field in feet
 	 */
-	private void drawXTickRange(Graphics2D g2, Line2D xaxis, double Max) {
+	private void drawXTickRange(Graphics2D g2, Line2D xaxis, double yTickYMax, double yTickYMin, double Max) {
 		double upperXtic = Math.ceil(Max);
 
+		//The starting and ending x and y values for the x-axis
 		double x0 = xaxis.getX1();
 		double y0 = xaxis.getY1();
 		double xf = xaxis.getX2();
 		double yf = xaxis.getY2();
 
-		//calculate stepsize between ticks and length of Y axis using distance formula
+		//calculate step-size between ticks and length of Y axis using distance formula
+		//Total distance of the axis / number of ticks = distance per tick
 		double distance = Math.sqrt(Math.pow((xf - x0), 2) + Math.pow((yf - y0), 2)) / upperXtic;
 
 		double lower = 0;
-		for(int i = 0; i <= Max; i++) {
+		//Iterates through each number from 0 to the max length of the x-axis in feet and draws the horizontal grid
+		//lines for each iteration except the last one
+		for(int i = 0; i <= upperXtic; i++) {
 			double newX = x0;
-
 			//calculate width of number for proper drawing
 			String number = new DecimalFormat("#.#").format(lower);
 			FontMetrics fm = getFontMetrics(getFont());
 			int width = fm.stringWidth(number);
 
+			//Draws a tick line and the corresponding number at that value in black
 			g2.draw(new Line2D.Double(newX, yf, newX, yf + 10));
-
-			if(i % (double) 1 == 0) g2.drawString(number, (float) (newX - (width / 2.0)), (float) yf + 25);
+			g2.drawString(number, (float) (newX - (width / 2.0)), (float) yf + 25);
 
 			//add grid lines to chart
 			if(i != 0) {
 				Stroke tempS = g2.getStroke();
 				Color tempC = g2.getColor();
 
+				//Sets the color and stroke to light gray dashes and draws them all the way down to the x-axis
 				g2.setColor(Color.lightGray);
 				g2.setStroke(new BasicStroke(1f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1f, new float[]{5f}, 0f));
-
 				g2.draw(new Line2D.Double(newX, yTickYMax, newX, height - (height - yTickYMin)));
 
 				g2.setColor(tempC);
 				g2.setStroke(tempS);
 			}
+			//Increment the number to draw and the position of the tick
 			lower += 1;
 			x0 = newX + distance;
 		}
@@ -661,6 +696,11 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		//until this method is called.
 	}
 
+	/**
+	 * This function formats and appends all the values in all the paths into proper 2D array syntax and then returns that String.
+	 *
+	 * @return a String that contains all the values for all the paths
+	 */
 	private String output2DArray() {
 		StringBuilder output = new StringBuilder();
 		output.append("public static Object[][] currentPath = new Object[][]{\n");
@@ -674,6 +714,12 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		return output.toString();
 	}
 
+	/**
+	 * This function does the actual formatting and appending for all the values in a path to a StringBuilder
+	 *
+	 * @param output the StringBuilder to append the values of the path to.
+	 * @param value the path to parse, format and get the values from.
+	 */
 	private void outputPath(StringBuilder output, BetterArrayList<PathSegment> value) {
 		for(PathSegment path : value)
 			if(path.isDrawn) {
@@ -686,6 +732,18 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		output.append("};\n");
 	}
 
+	/**
+	 * This function generates the left and right paths from a center path and returns those paths. All math is in radians
+	 * because Java's math library uses radians for it's trigonometric calculations. First, it checks if the original path
+	 * has more than one point because you can't calculate a heading from one point only. Then, it calculates the heading between
+	 * 2 consecutive points in the original path and stores those values in an array. Next, it sets the last point to the same heading
+	 * as the previous point so that the ending of the path is more accurate. Finally, it calculates the new point values (in feet) and returns
+	 * those paths in the BetterArrayList of BetterArrayLists.
+	 *
+	 * @param points the original center path to generate the left and right values from (point values are in feet)
+	 * @param robotTrkWidth the robot track width (used as the actual width of the robot for simplicity)
+	 * @return A BetterArrayList of the left and right paths (Stored in BetterArrayLists also) for the robot
+	 */
 	private BetterArrayList<BetterArrayList<Point>> leftRight(BetterArrayList<Point> points, double robotTrkWidth) {
 		BetterArrayList<BetterArrayList<Point>> temp = new BetterArrayList<>();
 		temp.add(new BetterArrayList<>(points.size()));//Left
@@ -695,6 +753,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		System.out.println(points.size());
 
 		if(points.size() > 1) {
+			//Heading calculation
 			IntStream.range(0, points.size() - 1).forEach(i -> {
 				double x1 = points.get(i).x, x2 = points.get(i + 1).x, y1 = points.get(i).y, y2 = points.get(i + 1).y;
 				heading[i] = Math.atan2(y2 - y1, x2 - x1);
@@ -704,7 +763,12 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			if(heading.length > 1)
 				heading[heading.length - 1] = heading[heading.length - 2];
 
-			//convert to degrees 0 to 360 where 0 degrees is +x-axis, accumulated to align with our gyro
+			//Point value calculation, temp.get(0) and temp.get(1) are the left and right paths respectively
+			//Pi / 2 rads = 90 degrees
+			//leftX = trackWidth / 2 * cos(calculatedAngleAtThatIndex + Pi / 2) + centerPathXValueAtThatIndex
+			//leftY = trackWidth / 2 * sin(calculatedAngleAtThatIndex + Pi / 2) + centerPathYValueAtThatIndex
+			//rightX = trackWidth / 2 * cos(calculatedAngleAtThatIndex - Pi / 2) + centerPathXValueAtThatIndex
+			//rightY = trackWidth / 2 * sin(calculatedAngleAtThatIndex - Pi / 2) + centerPathYValueAtThatIndex
 			IntStream.range(0, heading.length).forEach(i -> {
 				temp.get(0).add(i, new PathGUITool.Point(robotTrkWidth / 2 * Math.cos(heading[i] + Math.PI / 2) + points.get(i).x,
 						robotTrkWidth / 2 * Math.sin(heading[i] + Math.PI / 2) + points.get(i).y));
@@ -716,6 +780,16 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		return temp;
 	}
 
+	/**
+	 * This function generates pathSegPoints from the clicked points and is only called with a clicked PathSegment. It generates
+	 * the center path first and then if that wasn't null, it will generate the left and right paths, check if those are valid,
+	 * assign those to the given pathSegment's left and right path BetterArrayLists respectively, and return true, else it will
+	 * remove the last point if remove is true, show the fieldError and return false.
+	 *
+	 * @param ps the pathSegment to get the clickPoints from and generate a paths from them
+	 * @param remove true if it should remove the last added point if that point made the path invalid
+	 * @return true if the generated path was valid else false
+	 */
 	private boolean genPath(PathSegment ps, boolean remove) {
 		pathGen = new MPGen2D(convertPointArray(ps.clickPoints), 5.0, 0.02, robotTrkWidth);
 		pathGen.calculate();
@@ -737,21 +811,44 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		return true;
 	}
 
-	private boolean checkCircleArea(BetterArrayList<Point> temp) {
-		return temp.stream().allMatch(this::checkCircleArea);
+	/**
+	 * This function checks the circular area around each point in a pathSegment to see if its valid.
+	 * If it is valid, that means that it has enough room to generate the left and right paths for that pathSegment.
+	 *
+	 * @param ps the <code>PathSegment</code> to check
+	 * @return true if its valid, false otherwise
+	 */
+	private boolean checkCircleArea(BetterArrayList<Point> ps) {
+		return ps.stream().allMatch(this::checkCircleArea);
 	}
 
+	/**
+	 * Instead of inputting a <code>Point</code>, you can input an x and y value instead of creating a new <code>Point</code>
+	 *
+	 * @param x the x value of a position to check
+	 * @param y the y value of a position to check
+	 * @return true if that position is valid, false otherwise
+	 */
 	private boolean checkCircleArea(double x, double y) {
 		return checkCircleArea(new Point(x, y));
 	}
 
+	/**
+	 * This function actually checks to see if the area of the circle with a diameter of the robotTrackWidth intersects
+	 * the area of an invalid field element. If any part of the circle area overlaps with any part of the invalid element area
+	 * this point is invalid so the function returns false, otherwise it returns true. The field border is a special case because
+	 * the area of the field border is the entire field, so if we were to check whether any point's area overlapped with the entire
+	 * field, it would always be invalid, therefore we skip the field border.
+	 *
+	 * @param po the point to check
+	 * @return true if the points valid, otherwise false
+	 */
 	private boolean checkCircleArea(Point po) {
 		Area a = new Area(new Ellipse2D.Double(po.x - robotTrkWidth / 2.0, po.y - robotTrkWidth / 2.0, robotTrkWidth, robotTrkWidth));
 		for(Polygon2D p : fg.invalidAreas) {
 			Area element = new Area(p);
 			element.intersect(a);
 			if(!p.name.equals("field border") && !element.isEmpty()) {
-				System.out.println("pls work lol");
 				invalidElementName = p.name;
 				return false;
 			}
@@ -759,15 +856,39 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		return true;
 	}
 
+	/**
+	 * This function checks an entire path to see if any point in it is in an invalid position, whether that may be intersecting an invalid field
+	 * element, in an invalid field element, or outside the field border.
+	 *
+	 * @param path the path to check
+	 * @return true if the entire path is valid, otherwise false
+	 */
 	private boolean validatePath(BetterArrayList<PathSegment> path) {
 		return path.stream().allMatch(pathSegment -> validatePathSegment(pathSegment.pathSegPoints));
 	}
 
+	/**
+	 * This function checks a PathSegment to see if any point in it is in an invalid position, whether that may be intersecting an invalid field
+	 * element, in an invalid field element, or outside the field border.
+	 *
+	 * @param b the path segement to check
+	 * @return true if the path segement is valid, otherwise false
+	 */
 	private boolean validatePathSegment(BetterArrayList<Point> b) {
 		if(b.size() == 1) return validatePoint(b.get(0).x, b.get(0).y, null);
 		return IntStream.range(0, b.size() - 1).allMatch(i -> validatePoint(b.get(i).x, b.get(i).y, b.get(i + 1)));
 	}
 
+	/**
+	 * This function checks a Point to see if its in an invalid position, whether that may be in an invalid field element, or outside the field border.
+	 * It also takes another point, which would usually be the next consecutive one in the PathSegment, and creates a line to it to check if that line
+	 * intersects an invalid field element
+	 *
+	 * @param x the x values of the point
+	 * @param y thhe y value of the point
+	 * @param next the next point to create a line to
+	 * @return false if the next point is invalid, false if the next point is null and the current point is invalid, true otherwise
+	 */
 	private boolean validatePoint(double x, double y, Point next) {
 		for(Polygon2D p : fg.invalidAreas) {
 			if(next != null) {
@@ -784,12 +905,22 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		return true;
 	}
 
+	/**
+	 * Function that displays a dialog letting the user know that their last inputted point was invalid.
+	 */
 	private void showFieldError() {
 		System.out.println("error " + invalidElementName + " " + pm);
 		JOptionPane.showMessageDialog(g, String.format("You cannot create a point here as the robot following the generated path " +
 				"would go through the %s!", invalidElementName), "Point Validator", JOptionPane.ERROR_MESSAGE);
 	}
 
+	/**
+	 * This function gets the cursor position, constrains it to one inch inside the field and converts it to feet. The once in buffer
+	 * is used to make generating a path that starts at the field border, easier to create.
+	 *
+	 * @param p the point where the cursor is on the JFrame
+	 * @return an array with the x and y value of that point in feet
+	 */
 	private double[] getCursorFeet(java.awt.Point p) {
 		if(p != null) {
 			double[] temp = new double[2];
@@ -800,6 +931,12 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		return null;
 	}
 
+	/**
+	 * This function does the same thing as the one above except it keeps the position in pixels.
+	 *
+	 * @param p the point where the cursor is on the JFrame
+	 * @return an array with the x and y value of that point in pixels
+	 */
 	private int[] getCursorPixels(java.awt.Point p) {
 		if(p != null) {
 			int[] temp = new int[2];
@@ -810,6 +947,10 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		return null;
 	}
 
+	/**
+	 * An enum with the different modes in this program. Based on the previous mode, a different set on instructions for PathSegement or Point
+	 * joining is executed.
+	 */
 	private enum PrevMode {
 		DRAW, CLICKDRAW, DRAWCLICK, CLICK, UNDO, REDO
 	}
@@ -941,6 +1082,9 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		}
 	}
 
+	/**
+	 * Handles the motion and position of the mouse and runs different functions accordingly.
+	 */
 	class MouseListener extends MouseAdapter {
 		Image curImg;
 		Cursor cursor;
@@ -1186,7 +1330,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 							currentPath.remove(currentPath.size() - 2);
 					} else if(!currentPath.getLast().isDrawn) {
 						System.out.println("god damn it");
-						currentPath.removeLast();
+						currentPath.removeLast();//This probably is the problem perhaps xd
 					}
 				}
 			} else if(currentPath.size() == 1 && currentPath.getLast().clickPoints.isEmpty() && currentPath.getLast().pathSegPoints.isEmpty() &&
