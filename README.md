@@ -15,6 +15,9 @@ Ctrl + N | Keeps the old paths and starts a new one if, for example, you want th
 Ctrl + Z | Removes each point on the current path. (If the path segment is drawn, it removes each point individually, otherwise it removes each clicked point.)
 Ctrl + Y | Adds that point back (If the path segment is drawn, it adds each point individually, otherwise it adds each clicked point.)
 Ctrl + O | Opens and parses the selected file containing waypoints in proper Java 2D array syntax, and then display the paths from that file.
+Ctrl + I | Opens the instructions on how to use this program.
+Ctrl + A | Clears all the paths on the field.
+Ctrl + S | Saves the current paths to a file.
 
 For more information on the (FRC 2018) field, see: https://www.youtube.com/watch?v=HZbdwYiCY74 and
 https://firstfrc.blob.core.windows.net/frc2018/Drawings/LayoutandMarkingDiagram.pdf
