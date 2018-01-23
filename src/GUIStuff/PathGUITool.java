@@ -60,7 +60,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	private static PathGUITool fig;
 
 	//The JFrame for this GUI. It actually displays the window
-	private JFrame g = new JFrame("Path GUI Tool");
+	private final JFrame g = new JFrame("Path GUI Tool");
 
 	//doubles for storing important values, xScale and yScale are the values for
 	//pixels per foot for each axis, respectively, yTickYMax and Min are the max and min values of the y-axis in pixels,
@@ -75,7 +75,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	private BetterArrayList<PathSegment> currentPath = new BetterArrayList<>();
 
 	//LinkedHashMap to store the name and path for all previous paths
-	private LinkedHashMap<String, BetterArrayList<PathSegment>> paths = new LinkedHashMap<>();
+	private final LinkedHashMap<String, BetterArrayList<PathSegment>> paths = new LinkedHashMap<>();
 
 	//booleans for handling different conditions, previousDraw stores the most recent draw mode state, drawMode stores the
 	//current draw mode state, and firstUndoRedo is set to false when Undo is pressed for the first time
@@ -89,11 +89,11 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	private Object[] moveFlag = new Object[]{-1, -1, -1};
 
 	//Field generator object that contains all of the necessary shapes for the field drawing
-	private FieldGenerator fg = new FieldGenerator();
+	private final FieldGenerator fg = new FieldGenerator();
 
 	//ArrayDeque for storing the Ctrl + Z'd points
 	//add() adds last, peek() gets first
-	private Deque<PathSegment> redoBuffer = new ArrayDeque<>();
+	private final Deque<PathSegment> redoBuffer = new ArrayDeque<>();
 
 	//A String that stores the name of the field element you cannot create a point/path in/through.
 	private String invalidElementName = "";
@@ -102,7 +102,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	 * Constructor.
 	 */
 	private PathGUITool() {
-		//Create the menuBar, all the menuItems and specify the mnemonics and ActionLiseners for each item.
+		//Create the menuBar, all the menuItems and specify the mnemonics and ActionListeners for each item.
 		JMenuBar menuBar = new JMenuBar();
 		MenuListener ml = new MenuListener();
 		JMenu menu = new JMenu("File");
@@ -931,8 +931,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	 * This function checks a PathSegment to see if any point in it is in an invalid position, whether that may be intersecting an invalid field
 	 * element, in an invalid field element, or outside the field border.
 	 *
-	 * @param b the path segement to check
-	 * @return true if the path segement is valid, otherwise false
+	 * @param b the path segment to check
+	 * @return true if the path segment is valid, otherwise false
 	 */
 	private boolean validatePathSegment(BetterArrayList<Point> b) {
 		if(b.size() == 1) return validatePoint(b.get(0).x, b.get(0).y, null);
@@ -945,7 +945,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	 * intersects an invalid field element
 	 *
 	 * @param x    the x values of the point
-	 * @param y    thhe y value of the point
+	 * @param y    the y value of the point
 	 * @param next the next point to create a line to
 	 * @return false if the next point is invalid, false if the next point is null and the current point is invalid, true otherwise
 	 */
@@ -1008,7 +1008,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	}
 
 	/**
-	 * An enum with the different modes in this program. Based on the previous mode, a different set on instructions for PathSegement or Point
+	 * An enum with the different modes in this program. Based on the previous mode, a different set on instructions for PathSegment or Point
 	 * joining is executed.
 	 */
 	private enum PrevMode {
@@ -1104,7 +1104,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	 * It also needs to store the points of a path segment and if the path segment is clicked, then it needs to store those waypoints as well
 	 */
 	class PathSegment {
-		boolean isDrawn;
+		final boolean isDrawn;
 		BetterArrayList<Point> pathSegPoints, clickPoints, leftPSPoints, rightPSPoints;
 
 		/**
@@ -1233,7 +1233,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	 */
 	class MouseListener extends MouseAdapter {
 		//A custom cursor for letting the user know that their cursor is over an invalid position.
-		Cursor cursor;
+		final Cursor cursor;
 
 		{
 			//Initialize the cursor. Checks if the included image is in the correct file location, and if it is it creates

@@ -355,7 +355,7 @@ public class Polygon2D implements Shape, Cloneable, Serializable {
 	 *                 coordinates as they are returned in the iteration, or
 	 *                 <code>null</code> if untransformed coordinates are desired
 	 * @param flatness the maximum amount that the control points
-	 *                 for a given curve can vary from colinear before a subdivided
+	 *                 for a given curve can vary from co-linear before a subdivided
 	 *                 curve is replaced by a straight line connecting the
 	 *                 endpoints.  Since polygons are already flat the
 	 *                 <code>flatness</code> parameter is ignored.

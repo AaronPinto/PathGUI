@@ -15,7 +15,7 @@ import java.util.stream.IntStream;
  * actual match. The values in the 2D arrays are in feet, and the x-values are in the first columns followed by
  * the y-values in the 2nd columns. All the 2D arrays are converted to new Polygon2D's which are then drawn.
  */
-public class FieldGenerator {
+class FieldGenerator {
 	ArrayList<Polygon2D> invalidAreas = new ArrayList<>();
 	private LinkedHashMap<String, double[][]> elements = new LinkedHashMap<>();
 

@@ -20,7 +20,7 @@ import java.util.List;
  * @author https://github.com/KHEngineering/SmoothPathPlanner
  * Modified by: Aaron Pinto
  */
-public class MPGen2D {
+class MPGen2D {
 	double[][] smoothPath;
 	private double[][] origPath;
 	private double timeStep;
