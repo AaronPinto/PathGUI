@@ -300,10 +300,10 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	 * is not empty then removes any empty path segments from (ex.) incomplete mode switching, then checks if the new most recent path
 	 * segment has any path points. If this is the first time undo has been called since the last path update, or if the buffer is empty,
 	 * it adds a new path segment to the buffer. Then it checks if the (new) most recent path segment is drawn and if it is it removes
-	 * the last point in the center, left and right paths from the current path and adds them to the buffer. If the most recent path is
-	 * not drawn, it removes the last clicked point and then regenerates the path. If the new path is valid it stays like that, otherwise
-	 * if the new path is invalid, it does not let you undo anymore until you fix that issue. Finally, it clears any newly created empty
-	 * paths, repaints the GUI and sets the previous mode to Undo.
+	 * the last point in the center path from the current path and adds them to the buffer. If the most recent path is not drawn, it
+	 * removes the last clicked point and then regenerates the path. If the new path is valid it stays like that, otherwise if the new
+	 * path is invalid, it does not let you undo anymore until you fix that issue. Finally, it clears any newly created empty paths,
+	 * repaints the GUI and sets the previous mode to Undo.
 	 */
 	private void undo() {
 		if(!currentPath.isEmpty()) {
@@ -332,13 +332,11 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	/**
 	 * This function is the inverse of undo. It removes the most recent update to the buffer and adds it to the current path. It checks
 	 * if the redo buffer is not empty then removes any empty path segments, then checks if the current path's current path segment
-	 * isn't of the same type (drawn or not) as the one in the buffer and if the buffer isn't empty and based off that it may add a new
-	 * path segment to the current path. If this is the first time undo has been called since the last path update, or if the buffer is
-	 * empty, it adds a new path segment to the buffer. Then it checks if the (new) most recent path segment is drawn and if it is it
-	 * removes the last point in the center, left and right paths from the current path and adds them to the buffer. If the most recent
-	 * path is not drawn, it removes the last clicked point and then regenerates the path. If the new path is valid it stays like that,
-	 * otherwise if the new path is invalid, it does not let you undo anymore until you fix that issue. Finally, it clears any newly
-	 * created empty paths, repaints the GUI and sets the previous mode to Undo.
+	 * isn't of the same type (drawn or not) as the one in the buffer and if the buffer isn't empty, and based off that it may add a new
+	 * path segment to the current path. Then it checks if the (new) most recent path segment is drawn and if it is it removes the last
+	 * point from the buffer and, adds it to the current path and then generates the left and right paths. If the most recent path is not
+	 * drawn, it removes the last clicked point from the buffer and then regenerates the path. Finally, it clears any newly empty path
+	 * segments in the buffer, repaints the GUI and sets the previous mode to Redo.
 	 */
 	private void redo() {
 		if(!redoBuffer.isEmpty()) {
@@ -359,8 +357,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 
 			if(currentPath.getLast().isDrawn) {
 				currentPath.getLast().pathSegPoints.add(redoBuffer.peekLast().pathSegPoints.removeLast());
-				BetterArrayList<BetterArrayList<Point>> lr = leftRight(pathGen.smoother(currentPath.getLast().pathSegPoints,
-						0.3, 0.8, 0.000001), robotTrkWidth);
+				BetterArrayList<BetterArrayList<Point>> lr = leftRight(currentPath.getLast().pathSegPoints, robotTrkWidth);
 				currentPath.getLast().leftPSPoints = lr.get(0);
 				currentPath.getLast().rightPSPoints = lr.get(1);
 			} else {
@@ -403,14 +400,15 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	private void clear() {
 		if(!currentPath.isEmpty() || !paths.isEmpty()) {
 			if(JOptionPane.showConfirmDialog(g, "Are you sure you want to clear everything?", "Window Clearer",
-					JOptionPane.YES_NO_CANCEL_OPTION) == JOptionPane.YES_OPTION) {
+					JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
 				currentPath.clear();
 				paths.clear();
 				redoBuffer.clear();
 				previousDraw = firstUndoRedo = shift = false;
 				fig.repaint();
 			}
-		}
+		} else
+			JOptionPane.showMessageDialog(g, "You cannot clear nothing!", "Window Clearer", JOptionPane.ERROR_MESSAGE);
 	}
 
 	/**
