@@ -380,7 +380,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	}
 
 	/**
-	 * This function imports a path into the program and displays it onto the field.
+	 * This function imports a path into the program and displays it onto the field. It will
 	 */
 	private void open() {
 		JFileChooser jfc = new JFileChooser();
@@ -423,10 +423,13 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 					}
 					fileReader.close();
 					System.out.println("File imported successfully!");
+					JOptionPane.showMessageDialog(g, "File imported successfully!", "File Importer", JOptionPane.INFORMATION_MESSAGE);
 				} catch(FileNotFoundException ex) {
 					System.err.println("The file has magically disappeared");
 				} catch(Exception ex) {
 					System.err.println("Please format the data correctly!");
+					JOptionPane.showMessageDialog(g, String.format("You cannot import this path as it would go through the %s!", invalidElementName),
+							"File Importer", JOptionPane.ERROR_MESSAGE);
 					currentPath.clear();
 				}
 			addToPathsAndClear();
