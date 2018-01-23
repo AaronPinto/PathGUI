@@ -1229,7 +1229,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				int mf1 = (int) moveFlag[1], mf2 = (int) moveFlag[2];
 				if(mf1 > -1) {
 					double[] point;
-					if((point = getCursorFeet(g.getRootPane().getMousePosition())) != null) {
+					if((point = getCursorFeet(g.getRootPane().getMousePosition())) != null && validatePoint(point[0], point[1], null)) {
 						if(moveFlag[0].equals("current")) {
 							Point prevPoint = new Point(currentPath.get(mf1).clickPoints.get(mf2), true);
 							currentPath.get(mf1).clickPoints.get(mf2).x = point[0];
