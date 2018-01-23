@@ -23,7 +23,11 @@ import java.util.List;
 public class MPGen2D {
 	double[][] smoothPath;
 	private double[][] origPath;
-	private double timeStep, totalTime, robotTrackWidth, pathAlpha, pathBeta, pathTolerance;
+	private double timeStep;
+	private double totalTime;
+	private double pathAlpha;
+	private double pathBeta;
+	private double pathTolerance;
 
 	/**
 	 * Constructor to calculate a new 2D Motion Profile
@@ -31,9 +35,8 @@ public class MPGen2D {
 	 * @param waypoint   double[][]
 	 * @param time       double
 	 * @param tStep      double
-	 * @param trackWidth double
 	 */
-	MPGen2D(double[][] waypoint, double time, double tStep, double trackWidth) {
+	MPGen2D(double[][] waypoint, double time, double tStep) {
 		if(waypoint.length == 1) {
 			smoothPath = waypoint;
 			return;
@@ -45,7 +48,6 @@ public class MPGen2D {
 		pathBeta = 0.7;
 		pathTolerance = 0.0000001;
 
-		robotTrackWidth = trackWidth;
 		timeStep = tStep;
 		totalTime = time;
 	}
