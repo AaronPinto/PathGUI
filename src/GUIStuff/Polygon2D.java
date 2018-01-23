@@ -32,17 +32,17 @@ public class Polygon2D implements Shape, Cloneable, Serializable {
 	 * The total number of points.  The value of <code>npoints</code>
 	 * represents the number of valid points in this <code>Polygon</code>.
 	 */
-	int npoints;
+	private int npoints;
 	/**
 	 * The array of <i>x</i> coordinates. The value of {@link #npoints npoints} is equal to the
 	 * number of points in this <code>Polygon2D</code>.
 	 */
-	double[] xpoints;
+	private double[] xpoints;
 	/**
 	 * The array of <i>x</i> coordinates. The value of {@link #npoints npoints} is equal to the
 	 * number of points in this <code>Polygon2D</code>.
 	 */
-	double[] ypoints;
+	private double[] ypoints;
 	/**
 	 * Bounds of the Polygon2D.
 	 *
@@ -92,6 +92,9 @@ public class Polygon2D implements Shape, Cloneable, Serializable {
 		return pol;
 	}
 
+	/**
+	 * This function calculates the best path between each point in this <code>Polygon2D</code>
+	 */
 	private void calculatePath() {
 		path = new Path2D.Double();
 		path.moveTo(xpoints[0], ypoints[0]);
@@ -101,6 +104,12 @@ public class Polygon2D implements Shape, Cloneable, Serializable {
 		closedPath = null;
 	}
 
+	/**
+	 * This function updates the path based on the new point that was added to this <code>Polygon2D</code>
+	 *
+	 * @param x the x-value of the point that was added
+	 * @param y the y-value of the point that was added
+	 */
 	private void updatePath(double x, double y) {
 		closedPath = null;
 		if(path == null) {
@@ -175,6 +184,9 @@ public class Polygon2D implements Shape, Cloneable, Serializable {
 		return closedPath.contains(x, y);
 	}
 
+	/**
+	 * Updates the closed path so that functions that rely on a closed path can work properly
+	 */
 	private void updateComputingPath() {
 		if(npoints >= 1 && closedPath == null) {
 			closedPath = (Path2D) path.clone();

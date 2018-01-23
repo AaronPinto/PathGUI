@@ -7,6 +7,14 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.IntStream;
 
+/**
+ * This class is used for storing and drawing all the field elements. Each element is stored in its own 2D array
+ * and then it is added to a LinkedHashMap only or also to an ArrayList. The LinkedHashMap is used to store all
+ * the field elements that need to be drawn, and the ArrayList is used for storing invalid areas. An invalid area
+ * is a part of the field where it is normally impossible to enter, unless you flip over or something during an
+ * actual match. The values in the 2D arrays are in feet, and the x-values are in the first columns followed by
+ * the y-values in the 2nd columns. All the 2D arrays are converted to new Polygon2D's which are then drawn.
+ */
 public class FieldGenerator {
 	ArrayList<Polygon2D> invalidAreas = new ArrayList<>();
 	private LinkedHashMap<String, double[][]> elements = new LinkedHashMap<>();
@@ -119,6 +127,7 @@ public class FieldGenerator {
 
 	};
 
+	//Add all the elements to their respective data structures on object creation.
 	{
 		LinkedHashMap<String, double[][]> invAreas = new LinkedHashMap<>();
 		invAreas.put("field border", fieldBorder);
@@ -171,10 +180,22 @@ public class FieldGenerator {
 		elements.put("fieldBorder", fieldBorder);
 	}
 
+	/**
+	 * This functions converts inches to feet
+	 *
+	 * @param inches the number of inches to convert
+	 * @return the values of those inches in feet
+	 */
 	private double incToFt(double inches) {
 		return inches / 12.0;
 	}
 
+	/**
+	 * This function flips the x and y values over the y and x axes respectively.
+	 *
+	 * @param values the points to flip
+	 * @return the 2D array with the flipped points
+	 */
 	private double[][] flipOverXAndY(double[][] values) {
 		double[][] temp = new double[values.length][values[0].length];
 		IntStream.range(0, values.length).forEach(i -> {
@@ -184,6 +205,11 @@ public class FieldGenerator {
 		return temp;
 	}
 
+	/**
+	 * This function just flips the y values over the x-axis.
+	 * @param values the values to flip
+	 * @return the flipped values
+	 */
 	private double[][] flipOverXAxis(double[][] values) {
 		double[][] temp = new double[values.length][values[0].length];
 		IntStream.range(0, values.length).forEach(i -> {
@@ -193,9 +219,18 @@ public class FieldGenerator {
 		return temp;
 	}
 
+	/**
+	 * This function is called every time the GUI updates. It redraws all the field elements and sets the colors accordingly.
+	 *
+	 * @param g2 the 2D graphics object for the JFrame
+	 * @param h the height of the field
+	 * @param xScale the ratio for number of pixels per foot for the x-axis
+	 * @param yScale the ratio for number of pixels per foot for the y-axis
+	 */
 	void plotField(Graphics2D g2, int h, double xScale, double yScale) {
 		for(Map.Entry<String, double[][]> entry : elements.entrySet()) {
 			String key = entry.getKey();
+			//If the key contains a 0 we want to fill this field element.
 			if(key.contains("0")) {
 				double[] xPoints = new double[entry.getValue().length], yPoints = new double[entry.getValue().length];
 				IntStream.range(0, entry.getValue().length).forEach(i -> {
@@ -223,6 +258,7 @@ public class FieldGenerator {
 				continue;
 			}
 
+			//Otherwise we just want to draw the border.
 			for(int i = 0; i < entry.getValue().length - 1; i++)
 				for(int j = 0; j < entry.getValue()[0].length - 1; j++) {
 					double x1 = 30 + xScale * entry.getValue()[i][j], x2 = 30 + xScale * entry.getValue()[i + 1][j];

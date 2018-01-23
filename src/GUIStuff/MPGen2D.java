@@ -32,9 +32,9 @@ public class MPGen2D {
 	/**
 	 * Constructor to calculate a new 2D Motion Profile
 	 *
-	 * @param waypoint   double[][]
-	 * @param time       double
-	 * @param tStep      double
+	 * @param waypoint double[][]
+	 * @param time     double
+	 * @param tStep    double
 	 */
 	MPGen2D(double[][] waypoint, double time, double tStep) {
 		if(waypoint.length == 1) {
@@ -53,7 +53,7 @@ public class MPGen2D {
 	}
 
 	/**
-	 * Performs a deep copy of a 2 Dimensional Array looping thorough each element in the 2D array
+	 * Performs a deep copy of a 2 Dimensional Array looping through each element in the 2D array
 	 */
 	private static double[][] doubleArrayDeepCopy(double[][] arr) {
 		double[][] temp = new double[arr.length][arr[0].length];
@@ -103,6 +103,15 @@ public class MPGen2D {
 		return temp;
 	}
 
+	/**
+	 * This method calculates the optimal parameters for determining what amount of nodes to inject into the path
+	 * to meet the time restraint. This approach uses an iterative process to inject and smooth, yielding more desirable
+	 * results for the final smooth path.
+	 *
+	 * @param numNodeOnlyPoints the number of direction changing waypoints
+	 * @param maxTimeToComplete the max time to complete the path
+	 * @param tStep             the sample/delta time between each point
+	 */
 	private int[] injectionCounter2Steps(double numNodeOnlyPoints, double maxTimeToComplete, double tStep) {
 		int[] ret;
 		int first = 0;
@@ -194,6 +203,12 @@ public class MPGen2D {
 	 * Optimization algorithm, which optimizes the data points in path to create a smooth trajectory.
 	 * This optimization uses gradient descent. While unlikely, it is possible for this algorithm to never
 	 * converge. If this happens, try increasing the tolerance level.
+	 *
+	 * @param path the path to smooth
+	 * @param weight_data the alpha value, from 0.0-1.0 to control how close the smoothed path is to the original data set
+	 * @param weight_smooth the beta value, from 0.0-1.0 to control how curvy the resulting smooth path is
+	 * @param tolerance the tolerance of the new points from the old ones
+	 * @return the new smoother path in 2D array format
 	 */
 	private double[][] smoother(double[][] path, double weight_data, double weight_smooth, double tolerance) {
 		double[][] newPath = doubleArrayDeepCopy(path);
@@ -216,11 +231,20 @@ public class MPGen2D {
 	 * Optimization algorithm, which optimizes the data points in path to create a smooth trajectory.
 	 * This optimization uses gradient descent. While unlikely, it is possible for this algorithm to never
 	 * converge. If this happens, try increasing the tolerance level.
+	 *
+	 * @param p the PathSegment to smooth
+	 * @param wd the alpha value, from 0.0-1.0 to control how close the smoothed path is to the original data set
+	 * @param ws the beta value, from 0.0-1.0 to control how curvy the resulting smooth path is
+	 * @param tol the tolerance of the new points from the old ones
+	 * @return the new smoother path in PathSegment format
 	 */
 	public BetterArrayList<PathGUITool.Point> smoother(BetterArrayList<PathGUITool.Point> p, double wd, double ws, double tol) {
 		return PathGUITool.convert2DArray(smoother(PathGUITool.convertPointArray(p), wd, ws, tol));
 	}
 
+	/**
+	 * The main calculation function which calculates and smooths the new path
+	 */
 	public void calculate() {
 		if(origPath != null) {
 			//first find only direction changing nodes
@@ -239,7 +263,6 @@ public class MPGen2D {
 					smoothPath = smoother(smoothPath, 0.1, 0.3, 0.0000001);
 				}
 			}
-
 //			Arrays.stream(smoothPath).map(aSmoothPath -> "{" + aSmoothPath[0] + ", " + aSmoothPath[1] + "},").forEach(System.out::println);
 		}
 	}

@@ -3,23 +3,14 @@ package GUIStuff;
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
-import java.awt.datatransfer.Clipboard;
-import java.awt.datatransfer.ClipboardOwner;
-import java.awt.datatransfer.StringSelection;
-import java.awt.datatransfer.Transferable;
+import java.awt.datatransfer.*;
 import java.awt.event.*;
-import java.awt.geom.Area;
-import java.awt.geom.Ellipse2D;
-import java.awt.geom.Line2D;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.awt.geom.*;
+import java.io.*;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import java.util.stream.*;
 
 /**
  * The program takes the mouse position on the field drawn in the GUI and then based off of that, when the mouse button is
@@ -33,12 +24,14 @@ import java.util.stream.IntStream;
  * for a 2D array, Ctrl + N to keep the old paths and start a new one if, for example, you want the robot to follow
  * multiple paths in auto, Ctrl + Z removes each point on the current path and Ctrl + Y adds that point back plus you can
  * hold down the keys and it will rapidly get rid of each point, and Ctrl + O to open and parse a file containing waypoints
- * in proper Java 2D array format, and then display the paths from that file.
+ * in proper Java 2D array format, and then display the paths from that file. Most of the printouts are commented out because they
+ * were simply for debugging purposes. If you would like to uncomment all of them, just Ctrl + F in your IDE for "System.out.print",
+ * and uncomment accordingly.
  * <p>
  * For more information on the field, see: <a href="https://www.youtube.com/watch?v=HZbdwYiCY74">FRC 2018 Game Reveal</a> and
  * <a href="https://firstfrc.blob.core.windows.net/frc2018/Drawings/LayoutandMarkingDiagram.pdf">FRC 2018 Field Drawings</a>
  * <p>
- * For version history see: <a href="https://github.com/AaronPinto/PathGUI">PathGUI GitHub</a>
+ * For version history and perhaps a later version see: <a href="https://github.com/AaronPinto/PathGUI">PathGUI GitHub</a>
  * <p>
  * References:
  * This class refers to <a href="https://github.com/KHEngineering/SmoothPathPlanner/blob/master/src/usfirst/frc/team2168/robot/FalconLinePlot.java">
@@ -229,7 +222,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	}
 
 	/**
-	 * Function that creates a new JFrame with  JLabel to display the instructions on how to use this program.
+	 * Function that creates a new JFrame with a JLabel to display the instructions on how to use this program.
 	 */
 	private void instructions() {
 		JFrame j = new JFrame("Instructions");
@@ -241,27 +234,29 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				j.dispose();
 			}
 		});
-		j.setSize(710, 400);
+		j.setSize(1024, 470);
 		j.setLayout(new BorderLayout(10, 10));
 		j.setLocationRelativeTo(null);
 		j.setResizable(false);
-		String text = "The program takes the mouse position on the field drawn in the GUI and then based off of that, when the mouse" +
-				" button is clicked, it adds that point to a series of points, called a PathSegment, and generates a path accordingly. This is " +
-				"called click mode. Draw mode is toggleable off/on (Ctrl + D) and by default it is on, which means you can use it in tandem with " +
-				"click mode, and it automatically switches depending on whether or not you hold the left button on your mouse down or not. Draw " +
-				"mode essentially allows you to draw a path yourself without having to generate one each time. It allows for more freedom of design " +
-				"regarding the path that the robot follows. The program also has various keyboard shortcuts to make it more intuitive and easy to " +
-				"use. Ctrl + C to copy points on the path in proper Java syntax for a 2D array (Ctrl + V to paste outside of the program), Ctrl + N " +
-				"to keep the old paths and start a new one if, for example, you want the robot to follow multiple paths in auto, Ctrl + Z removes " +
-				"each point on the current path and Ctrl + Y adds that point back plus you can hold down the keys and it will rapidly get rid of " +
-				"each point, Ctrl + O to open and parse a file containing waypoints in proper Java 2D array format, and then display the paths" +
-				" from that file, and Ctrl + S to save your points to a file, again in proper Java syntax for a 2D array. You can also shift-click " +
-				"a path to start editing it again in case you realized you made a mistake or you want to change a curve. There may be some other " +
-				"keyboard shortcuts not documented in these instructions/description but just check the menu and see what they do. The program " +
-				"also has mnemonics that you can use if you don't know how to use keyboard shortcuts or something.";
+		String text = "The program takes the mouse position on the field drawn in the GUI and then based off of that, when the mouse button is " +
+				"clicked, it adds that point to a series of points, called a PathSegment, and generates a path accordingly. This is called " +
+				"click mode. The path generation is based off of the generator that we currently use. The filename is MPGen2D.\n<br><br>" +
+				"<table border=\"1\" cellpadding=\"2\" cellspacing=\"0\"><tr><th>&nbsp&nbsp&nbsp Shortcut &nbsp&nbsp&nbsp</th><th>Description" +
+				"</th></tr><tr><th>CTRL + D</th><th>Draw mode is toggleable off/on and by default it is on, which means you can use it in " +
+				"tandem with click mode, and it automatically switches depending on whether or not you hold the left button on your mouse " +
+				"down or not. Drag mode essentially allows you to draw a path yourself without having to generate one each time. It allows" +
+				" for more freedom of design regarding the path that the robot follows.</th> </tr> <tr> <th>CTRL + C</th> <th>Copies all " +
+				"the points from all the points path, and each path is in proper Java syntax for a 2D array.</th> </tr> <tr> <th>CTRL + N" +
+				"</th> <th>Keeps the old paths and starts a new one if, for example, you want the robot to follow multiple paths in auto." +
+				"</th> </tr> <tr> <th>CTRL + Z</th> <th>Removes each point on the current path. (If the path segment is drawn, it removes " +
+				"each point individually, otherwise it removes each clicked point.)</th> </tr> <tr> <th>CTRL + Y</th> <th>Adds that point" +
+				" back (If the path segment is drawn, it adds each point individually, otherwise it adds each clicked point.)</th> </tr> " +
+				"<tr> <th>CTRL + O</th> <th>Opens and parses the selected file containing waypoints in proper Java 2D array syntax, and " +
+				"then display the paths from that file.</th> </tr> <tr> <th>CTRL + I</th> <th>Opens the instructions on how to use this " +
+				"program.</th> </tr> <tr> <th>CTRL + A</th> <th>Clears all the paths on the field.</th> </tr> <tr> <th>CTRL + S</th> <th>" +
+				"Saves the current paths to a file.</th> </tr> </table>";
 		JLabel l = new JLabel("<html><div style='text-align: center;'>" + text + "</div></html>", SwingConstants.CENTER);
-		l.setFont(new Font("Arial", Font.PLAIN, 16));
-		l.setSize(710, 400);
+		l.setFont(new Font("Arial", Font.PLAIN, 15));
 		j.add(l);
 		j.setVisible(true);
 		g.setEnabled(false);
@@ -1525,13 +1520,13 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				int numToRemove = (int) constrainTo(currentPath.get2ndLast().pathSegPoints.size(), 0.0, 10.0);
 				if(!currentPath.get2ndLast().isDrawn)
 					if(!currentPath.getLast().isDrawn && currentPath.getLast().clickPoints.isEmpty() && currentPath.getLast().pathSegPoints.isEmpty()) {
-						System.out.println("normal click sorta");
+//						System.out.println("normal click sorta");
 						//Removes the unnecessary empty path segment and adds a clicked point
 						//to the previous because we already know the previous one is not drawn
 						currentPath.removeLast();
 						simClick(x, y);
 					} else {
-						System.out.println("blah");
+//						System.out.println("blah");
 						currentPath.get2ndLast().clickPoints.add(new Point(x, y));
 						pathGen = new MPGen2D(convertPointArray(currentPath.get2ndLast().clickPoints), 5.0, 0.02
 						);
@@ -1555,10 +1550,10 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 						currentPath.getLast().clickPoints.add(new Point(currentPath.get2ndLast().pathSegPoints.get(currentPath.get2ndLast().
 								pathSegPoints.size() - numToRemove), false));
 					currentPath.getLast().clickPoints.add(new Point(currentPath.get2ndLast().pathSegPoints.getLast(), false));
-					System.out.println("WEWWWWWWWWWWWWWWW");
+//					System.out.println("WEWWWWWWWWWWWWWWW");
 					currentPath.getLast().clickPoints.add(new Point(x, y));
 					if(genPath(currentPath.getLast(), true)) {
-						System.out.println("alright");
+//						System.out.println("alright");
 						if(currentPath.get2ndLast().isDrawn)
 							for(int i = 0; i < numToRemove - 1; i++)
 								currentPath.get2ndLast().pathSegPoints.removeLast();
@@ -1566,8 +1561,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 								&& !currentPath.get2ndLast().isDrawn)
 							currentPath.remove(currentPath.size() - 2);
 					} else if(!currentPath.getLast().isDrawn) {
-						System.out.println("god damn it");
-						currentPath.removeLast();//This probably is the problem perhaps xd
+//						System.out.println("god damn it");
+						currentPath.removeLast();
 					}
 				}
 			} else if(currentPath.size() == 1 && currentPath.getLast().clickPoints.isEmpty() && currentPath.getLast().pathSegPoints.isEmpty() &&
@@ -1577,7 +1572,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 
 		/**
 		 * This function handles all the logic for switching between modes, adding Points to compensate for mode switches, adding PathSegments to
-		 * compensate for mode switching, and updating the path correctly with the new point, if the new point is valid.
+		 * compensate for mode switching, and updating the path correctly with the new point, if the new point is valid. Most recent point refers
+		 * to the last point that was added previous to the new one that was inputted and validated.
 		 *
 		 * @param drawMode true if this function was called from the mouseDragged() function, false if it was from MouseClicked()
 		 */
@@ -1585,20 +1581,25 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			//Get the mouse position (x, y) on the window, constrain it to the field borders and convert it to feet.
 			double[] point;
 			if((point = getCursorFeet(g.getRootPane().getMousePosition())) != null) {
+				//Find the previous point based on the last path segment type. The previous point is used for line intersection.
 				Point prev = currentPath.isEmpty() ? null : currentPath.getLast().pathSegPoints.isEmpty() ? null : currentPath.getLast().isDrawn ?
 						currentPath.getLast().pathSegPoints.getLast() : currentPath.getLast().clickPoints.getLast();
-				if(checkCircleArea(point[0], point[1]) && validatePoint(point[0], point[1], prev)) {
+				if(checkCircleArea(point[0], point[1]) && validatePoint(point[0], point[1], prev)) {//Validate points
 					if(drawMode) {
 						if(previousDraw) {//Handles staying at draw mode
-							System.out.println("spicy");
+//							System.out.println("spicy");
+							//Add a new path segment if we're drawing and the most recent path is not drawn
 							if(currentPath.isEmpty() || !currentPath.getLast().isDrawn)
 								currentPath.add(new PathSegment(true));
+							//This adds the most recent point to the new path segment in case your new point is not in the same position as the most recent
 							if((pm == PrevMode.CLICKDRAW || pm == PrevMode.UNDO || pm == PrevMode.REDO) && currentPath.size() > 1 &&
 									!currentPath.get2ndLast().isDrawn && (currentPath.getLast().pathSegPoints.isEmpty() || !currentPath.
 									getLast().pathSegPoints.get(0).equals(currentPath.get2ndLast().pathSegPoints.getLast())))
 								currentPath.getLast().pathSegPoints.add(currentPath.get2ndLast().pathSegPoints.getLast());
+							//Set the most recent point to unmovable so that you can't break a path after its been made
 							if(pm == PrevMode.CLICKDRAW && !currentPath.isEmpty() && !currentPath.getLast().isDrawn)
 								currentPath.get2ndLast().clickPoints.getLast().movable = false;
+							//Generate left and right paths and only add them if they're valid
 							if(!currentPath.isEmpty() && currentPath.getLast().isDrawn) {
 								currentPath.getLast().pathSegPoints.add(new Point(point[0], point[1]));
 								BetterArrayList<Point> temp = pathGen.smoother(currentPath.getLast().pathSegPoints, 0.3, 0.8, 0.000001);
@@ -1614,7 +1615,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 							}
 							pm = PrevMode.DRAW;
 						} else {//Handles going from click to draw mode
-							System.out.println("plsssssssssssssssssssssssssssssssssssssssssssss");
+//							System.out.println("plsssssssssssssssssssssssssssssssssssssssssssss");
 							if((!currentPath.isEmpty() && currentPath.getLast().isDrawn) || pm == PrevMode.UNDO || pm == PrevMode.REDO) {
 								simDrawClick(point[0], point[1]);
 							} else if(pm == PrevMode.DRAWCLICK) {
@@ -1626,7 +1627,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 								if(currentPath.isEmpty())
 									currentPath.add(new PathSegment(false));
 								currentPath.getLast().clickPoints.add(new Point(point[0], point[1], false));
-								System.out.println(currentPath.getLast().clickPoints.size() + " fefw");
+//								System.out.println(currentPath.getLast().clickPoints.size() + " fefw");
+								//Generate a new path and set the
 								if(currentPath.getLast().clickPoints.size() > 1) {
 									currentPath.getLast().clickPoints.get2ndLast().movable = false;
 									genPath(currentPath.getLast(), true);
@@ -1637,7 +1639,9 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 							pm = PrevMode.CLICKDRAW;
 						}
 					} else if(previousDraw) {//Handles going from draw to click mode
-						System.out.println("SAJEGNJKGNJKASN");
+//						System.out.println("SAJEGNJKGNJKASN");
+						//If you're going from clickDraw to drawClick mode and the pathSegment stays clicked, that's the same as just
+						//clicking points, so handle it as such
 						if(pm == PrevMode.CLICKDRAW && !currentPath.getLast().isDrawn) {
 							if(!currentPath.isEmpty() && currentPath.getLast().pathSegPoints.isEmpty())
 								currentPath.removeLast();
@@ -1646,7 +1650,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 							simDrawClick(point[0], point[1]);
 						pm = PrevMode.DRAWCLICK;
 					} else {//Handles staying at click mode
-						System.out.println("dank");
+//						System.out.println("dank");
 						if(pm == PrevMode.UNDO || pm == PrevMode.REDO)
 							simDrawClick(point[0], point[1]);
 						else if(!currentPath.isEmpty() && currentPath.getLast().isDrawn)
