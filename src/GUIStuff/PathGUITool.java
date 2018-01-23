@@ -451,6 +451,16 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 						if(!currentPath.getLast().isDrawn) {
 							if(!genPath(currentPath.getLast(), false)) throw new Exception();
 						} else if(!validatePath(currentPath)) throw new Exception();
+						else {
+							BetterArrayList<BetterArrayList<Point>> lr = leftRight(currentPath.getLast().pathSegPoints, robotTrkWidth);
+							if(checkCircleArea(currentPath.getLast().pathSegPoints) && validatePathSegment(lr.get(0)) && validatePathSegment(lr.get(1))) {
+								currentPath.getLast().leftPSPoints = lr.get(0);
+								currentPath.getLast().rightPSPoints = lr.get(1);
+							} else {
+								currentPath.getLast().pathSegPoints.removeLast();
+								showFieldError();
+							}
+						}
 					}
 					fileReader.close();
 					System.out.println("File imported successfully!");
@@ -810,7 +820,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		temp.add(new BetterArrayList<>(points.size()));//Right
 		double[] heading = new double[points.size()];
 
-		System.out.println(points.size());
+//		System.out.println(points.size());
 
 		if(points.size() > 1) {
 			//Heading calculation
@@ -1408,6 +1418,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 												currentPath = paths.get(key);
 												paths.put(key, swap);
 												redoBuffer.clear();
+												shift = false;
 												return;
 											} else return;
 									}
