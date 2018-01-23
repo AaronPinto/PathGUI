@@ -92,7 +92,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	private PrevMode pm;
 
 	//An object array to store the index values necessary to locate a movable point in paths.
-	private Object[] moveflag = new Object[]{-1, -1, -1};
+	//moveFlag[0] is the path name, moveFlag[1] is the PathSegment index, moveFlag[2] is the Point index
+	private Object[] moveFlag = new Object[]{-1, -1, -1};
 
 	//Field generator object that contains all of the necessary shapes for the field drawing
 	private FieldGenerator fg = new FieldGenerator();
@@ -378,6 +379,9 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		}
 	}
 
+	/**
+	 * This function imports a path into the program and displays it onto the field.
+	 */
 	private void open() {
 		JFileChooser jfc = new JFileChooser();
 		jfc.setFileFilter(new FileNameExtensionFilter("Text or Java Files", "txt", "TXT", "java"));
@@ -430,11 +434,19 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		}
 	}
 
+	/**
+	 * Adds a new path segment to the redoBuffer in order to preserve the entire path as it is, instead of just adding all
+	 * the points to one path segment.
+	 */
 	private void addPathSegment() {
 		if(!currentPath.isEmpty())
 			redoBuffer.add(new PathSegment(currentPath.getLast().isDrawn));
 	}
 
+	/**
+	 * This function removes any empty paths that may be created whenever, most likely when mode switching and then not completing
+	 * the mode switch, for example activate the clickDraw mode (creates an empty drawn path) and then undoing (calls this function).
+	 */
 	private void removeEmptyPaths() {
 		if(currentPath.getLast().pathSegPoints.isEmpty()) {
 			currentPath.removeLast();
@@ -445,16 +457,19 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		}
 	}
 
-	private void outputRedoBuffer() {
-		for(PathSegment ps : redoBuffer) {
-			if(ps.isDrawn)
-				ps.pathSegPoints.forEach(System.out::println);
-			else
-				ps.clickPoints.forEach(System.out::println);
-			System.out.println("new path seg");
-		}
-	}
+//	private void outputRedoBuffer() {
+//		for(PathSegment ps : redoBuffer) {
+//			if(ps.isDrawn)
+//				ps.pathSegPoints.forEach(System.out::println);
+//			else
+//				ps.clickPoints.forEach(System.out::println);
+//			System.out.println("new path seg");
+//		}
+//	}
 
+	/**
+	 * This function adds the current path to the LinkedHashMap paths and then clears the currentPath, if the currentPath isn't empty.
+	 */
 	private void addToPathsAndClear() {
 		if(!currentPath.isEmpty()) {
 			paths.put(String.format("path%d", paths.size() + 1), currentPath);
@@ -966,13 +981,102 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	}
 
 	/**
+	 * A Point is simply a position in 2D space on the field, with double values because
+	 * they are also used for storing the value of each point in a path.
+	 */
+	static class Point {
+		double x, y;
+		boolean movable;
+
+		/**
+		 * Constructor that takes the co-ordinate of the point. It initially sets the point to be movable by default.
+		 *
+		 * @param x the x value of the co-ordinate
+		 * @param y the y value of the co-ordinate
+		 */
+		Point(double x, double y) {
+			this.x = x;
+			this.y = y;
+			this.movable = true;
+		}
+
+		/**
+		 * Constructor that takes the co-ordinate and whether it is movable or not of this point.
+		 *
+		 * @param x    the x value of the co-ordinate
+		 * @param y    the y value of the co-ordinate
+		 * @param move the point's initial movable state
+		 */
+		Point(double x, double y, boolean move) {
+			this.x = x;
+			this.y = y;
+			this.movable = move;
+		}
+
+		/**
+		 * Constructor that takes a previous point and whether or not this point is movable.
+		 *
+		 * @param p    the Point to copy the co-ordinate from
+		 * @param move the point's initial movable state
+		 */
+		Point(Point p, boolean move) {
+			this.x = p.x;
+			this.y = p.y;
+			this.movable = move;
+		}
+
+		/**
+		 * This function overrides the function in the superclass and is called whenever we want to compare if another
+		 * Object is equal to this one. If that Object is an instance of the Point class, It compares the x/y co-ordinate
+		 * value of both points and if they are the same, then this function returns true. Otherwise it just returns the
+		 * result of the superclass's equals function. Usually, this should only be used when comparing Points anyway.
+		 *
+		 * @param p the Object to compare this Point to
+		 * @return true if the object is the same as this one, false otherwise
+		 */
+		@Override
+		public boolean equals(Object p) {
+			if(p instanceof Point) {
+				Point temp = (Point) p;
+				return this.x == temp.x && this.y == temp.y;
+			}
+			return super.equals(p);
+		}
+
+		/**
+		 * This function overrides the function in the superclass and is called whenever we want to output the values
+		 * of this Point.
+		 *
+		 * @return a formatted String with this Point's values
+		 */
+		@Override
+		public String toString() {
+			return x + ", " + y + ", " + movable;
+		}
+
+		/**
+		 * This function is used whenever we want to output the x/y co-ordinate value of this pint only.
+		 *
+		 * @return a formatted String with this Point's co-ordinate value.
+		 */
+		String values() {
+			return x + ", " + y;
+		}
+	}
+
+	/**
 	 * A path segment can either be drawn or clicked and we need to keep track of that for the different keyboard shortcuts
 	 * It also needs to store the points of a path segment and if the path segment is clicked, then it needs to store those waypoints as well
 	 */
-	static class PathSegment {
+	class PathSegment {
 		boolean isDrawn;
 		BetterArrayList<Point> pathSegPoints, clickPoints, leftPSPoints, rightPSPoints;
 
+		/**
+		 * Constructor for a PathSegment
+		 *
+		 * @param isDrawn true if the path segment is drawn, otherwise false
+		 */
 		PathSegment(boolean isDrawn) {
 			this.isDrawn = isDrawn;
 			this.pathSegPoints = new BetterArrayList<>();
@@ -983,55 +1087,18 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	}
 
 	/**
-	 * A Point is simply a point in 2D space on the field, with double values because
-	 * they are also used for storing the value of each point in a path.
-	 */
-	static class Point {
-		double x, y;
-		boolean movable;
-
-		Point(double x, double y) {
-			this.x = x;
-			this.y = y;
-			this.movable = true;
-		}
-
-		Point(double x, double y, boolean move) {
-			this.x = x;
-			this.y = y;
-			this.movable = move;
-		}
-
-		Point(Point p, boolean move) {
-			this.x = p.x;
-			this.y = p.y;
-			this.movable = move;
-		}
-
-		@Override
-		public boolean equals(Object p) {
-			if(p instanceof Point) {
-				Point temp = (Point) p;
-				return this.x == temp.x && this.y == temp.y;
-			} else
-				return super.equals(p);
-		}
-
-		@Override
-		public String toString() {
-			return x + ", " + y + ", " + movable;
-		}
-
-		String values() {
-			return x + ", " + y;
-		}
-	}
-
-	/**
 	 * Handles the actions that are generated by whenever you click on the menuItems or use the mnemonics
 	 * Based on the action command (the name of the menuItem that triggered the event) it runs the respective function.
 	 */
 	class MenuListener implements ActionListener {
+		/**
+		 * This function overrides the function in the interface it implements and is called whenever a JMenuItem that
+		 * has this class as it's listener is selected, either through a click or trough the mnemonic. We figure out
+		 * JMenuItem was selected based off the name of the action command (name of JMenuItem) and then call the
+		 * corresponding function.
+		 *
+		 * @param e the ActionEvent that is created whenever a JMenuItem is selected
+		 */
 		@Override
 		public void actionPerformed(ActionEvent e) {
 			if(e.getActionCommand().equals("Undo (Ctrl + Z)")) undo();//CTRL + Z
@@ -1047,10 +1114,17 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	}
 
 	/**
-	 * Same thing as the menuListener but instead it listens for key presses and specific keyboard shortcuts
+	 * Same thing as the MenuListener but instead it listens for key presses and specific keyboard shortcuts
 	 * to call the respective function.
 	 */
 	class KeyboardListener extends KeyAdapter {
+		/**
+		 * This function overrides the function in the superclass and is called whenever a key is pressed while the
+		 * JFrame has focus. We figure out what keys were pressed, and it it was a specified keyboard shortcut, we
+		 * call the corresponding function.
+		 *
+		 * @param e the KeyEvent that is created whenever a key is pressed
+		 */
 		@Override
 		public void keyPressed(KeyEvent e) {
 			System.out.println(e.getExtendedKeyCode());
@@ -1079,6 +1153,11 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			if(e.getExtendedKeyCode() == 16) shift = true;
 		}
 
+		/**
+		 * This function is called whenever a key is released and the JFrame has focus.
+		 *
+		 * @param e the KeyEvent generated whenever a key is released
+		 */
 		@Override
 		public void keyReleased(KeyEvent e) {
 			//Shift is set to false when the shift key that was held down is released.
@@ -1088,10 +1167,19 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	}
 
 	/**
-	 * Handles the closing of the main JFrame. Essentially, this gives you the option to save your points when you try
-	 * to close the window, in case you forgot to save when u were using the program.
+	 * Handles the closing of the main JFrame. All it does is it gives you the option to save your points when you try
+	 * to close the window, in case you forgot to save when you were using the program.
 	 */
 	class WindowListener extends WindowAdapter {
+		/**
+		 * This function overrides the function in the superclass and is called whenever the X button is clicked on the JFrame.
+		 * If there is at least one Point in the current user session, it prompts the user if they want to save their point(s)
+		 * /path(s). If the user says no, the program exits, if the user cancels the program continues, and if the user says yes
+		 * then the save() function is called. If the current user session has no visible points on the field, the program exits.
+		 *
+		 * @param e the WindowEvent (unused) which is generated, in this case, when the X button is clicked.
+		 */
+		@Override
 		public void windowClosing(WindowEvent e) {
 			if(!paths.isEmpty() || (!currentPath.isEmpty() && !currentPath.get(0).pathSegPoints.isEmpty())) {
 				int response = JOptionPane.showConfirmDialog(g, "Do you want to save your points?", "Point Saver",
@@ -1107,30 +1195,39 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	 * Handles the motion and position of the mouse and runs different functions accordingly.
 	 */
 	class MouseListener extends MouseAdapter {
-		Image curImg;
+		//A custom cursor for letting the user know that their cursor is over an invalid position.
 		Cursor cursor;
 
 		{
-			curImg = Toolkit.getDefaultToolkit().getImage(getClass().getResource("/GUIStuff/cursor.png"));
-			cursor = Toolkit.getDefaultToolkit().createCustomCursor(curImg, new java.awt.Point(7, 7), "dank");
+			//Initialize the cursor. Checks if the included image is in the correct file location, and if it is it creates
+			//the cursor at the center of the actual image excluding the background.
+			cursor = Toolkit.getDefaultToolkit().createCustomCursor(Toolkit.getDefaultToolkit().getImage(getClass().
+					getResource("/GUIStuff/cursor.png")), new java.awt.Point(7, 7), "invalid");
 		}
 
 		/**
-		 * Draw mode essentially allows you to specify a free-flowing path for the robot to follow.
-		 * Instead of clicking multiple waypoints, it automatically takes your cursor location as
-		 * a waypoint, adds that to the list of waypoints and then updates the GUI.
-		 * If you've clicked on a valid point to move, instead of drawing a path it will move that
-		 * point instead, to whatever location your cursor is at and then update the path and GUI accordingly
+		 * This function overrides the function in the superclass and is called whenever Java detects the mouse has been dragged. A drag
+		 * consists of a mouse button being held down and the mouse being moved simultaneously. Draw mode essentially allows you to specify
+		 * a free-flowing path for the robot to follow. Instead of clicking multiple waypoints, it automatically takes your cursor location as
+		 * a waypoint, adds that to the list of waypoints and then updates the GUI. If you've clicked on a valid point to move, instead of
+		 * drawing a path it will move that point instead, to whatever valid location your cursor is at and then update the path and GUI
+		 * accordingly.
+		 *
+		 * If the user is not trying to shift-click a path, then if the user's cursor is within the JFrame, then if the user is trying to move
+		 * a clicked point (moveFlag[1] > -1), move that point based on the cursor position, otherwise call updateWaypoints(true). If the user
+		 * drags their cursor out of the JFrame prompt the user to move their cursor back into the window.
+		 *
+		 * @param e the (unused) MouseEvent generated when the mouse is dragged (button is held down and the mouse is moved)
 		 **/
 		@Override
 		public void mouseDragged(MouseEvent e) {
 			if(!shift) {
-				System.out.println(moveflag[0]);
-				int mf1 = (int) moveflag[1], mf2 = (int) moveflag[2];
+				System.out.println(moveFlag[0]);
+				int mf1 = (int) moveFlag[1], mf2 = (int) moveFlag[2];
 				if(mf1 > -1) {
 					double[] point;
 					if((point = getCursorFeet(g.getRootPane().getMousePosition())) != null) {
-						if(moveflag[0].equals("current")) {
+						if(moveFlag[0].equals("current")) {
 							Point prevPoint = new Point(currentPath.get(mf1).clickPoints.get(mf2), true);
 							currentPath.get(mf1).clickPoints.get(mf2).x = point[0];
 							currentPath.get(mf1).clickPoints.get(mf2).y = point[1];
@@ -1139,12 +1236,12 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 								currentPath.get(mf1).clickPoints.get(mf2).y = prevPoint.y;
 							}
 						} else {
-							Point prevPoint = new Point(paths.get(moveflag[0].toString()).get(mf1).clickPoints.get(mf2), true);
-							paths.get(moveflag[0].toString()).get(mf1).clickPoints.get(mf2).x = point[0];
-							paths.get(moveflag[0].toString()).get(mf1).clickPoints.get(mf2).y = point[1];
-							if(!genPath(paths.get(moveflag[0].toString()).get(mf1), false)) {
-								paths.get(moveflag[0].toString()).get(mf1).clickPoints.get(mf2).x = prevPoint.x;
-								paths.get(moveflag[0].toString()).get(mf1).clickPoints.get(mf2).y = prevPoint.y;
+							Point prevPoint = new Point(paths.get(moveFlag[0].toString()).get(mf1).clickPoints.get(mf2), true);
+							paths.get(moveFlag[0].toString()).get(mf1).clickPoints.get(mf2).x = point[0];
+							paths.get(moveFlag[0].toString()).get(mf1).clickPoints.get(mf2).y = point[1];
+							if(!genPath(paths.get(moveFlag[0].toString()).get(mf1), false)) {
+								paths.get(moveFlag[0].toString()).get(mf1).clickPoints.get(mf2).x = prevPoint.x;
+								paths.get(moveFlag[0].toString()).get(mf1).clickPoints.get(mf2).y = prevPoint.y;
 							}
 						}
 						fig.repaint();
@@ -1156,6 +1253,20 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			}
 		}
 
+		/**
+		 * This functions overrides the function in the superclass and is called whenever the mouse is moved. First, we check if the
+		 * mouse cursor is in the JFrame/window and if it is we constrain it to the field border and keep the values in pixels, and we
+		 * take another snapshot of the mouse position and then check if that is within the window. If it is, we shift it to the actual
+		 * position of the cursor relative to the field and keep it as pixels. This is the actual, unconstrained position of the cursor.
+		 * We then feed those cursor values into the findPoint() function and if it doesn't find a point, within a 7x7 range of the
+		 * cursor with the cursor in the center, in the current path and the cursor is not in an invalid field element, if paths is
+		 * empty it sets the cursor to the default cursor. Otherwise it searches through paths for the exact same thing as it does with
+		 * currentPath. If it still can't find a point, then it sets the cursor to the default arrow cursor. If the function finds a
+		 * movable point, it sets the cursor to a hand cursor. If the function finds a point that cannot be moved or the cursor position
+		 * is invalid, it changes the cursor to the custom invalid cursor.
+		 *
+		 * @param e the (unused) MouseEvent that is generated whenever the mouse is moved.
+		 */
 		@Override
 		public void mouseMoved(MouseEvent e) {
 			int[] point;
@@ -1174,6 +1285,25 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			}
 		}
 
+		/**
+		 * This function does the actual searching for a point through the specified path. The aim of this function is to modify the cursor
+		 * based upon what its close to (in terms of a clicked point) or in (in terms of an invalid field area). First, it searches through
+		 * all the clicked points in non-drawn path segments in a path, and if the cursor is within a 7x7 area, with the clicked point in the
+		 * middle, of a movable clicked point, it changes the cursor to a hand and returns true, otherwise if the point is not movable, it
+		 * changes the cursor to the custom invalid one and returns true. If the cursor is not near a clicked point in that path, it then
+		 * checks if the cursor is inside an invalid field area, other than the field border. If it is, then it sets the cursor the the
+		 * invalid one and returns true. Regarding the field border, it checks if the path is empty and if it is then it continues to the next
+		 * field element, otherwise it checks if the actual position of the cursor is outside the field border. If it is then it sets the
+		 * cursor to the invalid one and returns true. The reason why it checks if the path is empty is to make it easier for the user to start
+		 * a path along the field border. Because the first Point is automatically constrained to inside the field, you don't need to display
+		 * an unwieldy cursor that does not tell you, precisely, where the point will be created if you click.
+		 *
+		 * @param path the path to search through
+		 * @param x the x value of the constrained cursor position
+		 * @param y the y value of the constrained cursor position
+		 * @param actPos the actual unconstrained cursor position
+		 * @return false if the cursor is not near a clicked point in that path or in any invalid area, true otherwise
+		 */
 		private boolean findPoint(BetterArrayList<PathSegment> path, int x, int y, java.awt.Point actPos) {
 			int tx, ty;
 			for(PathSegment ps : path)
@@ -1203,6 +1333,20 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			return false;
 		}
 
+		/**
+		 * This function overrides the function in the superclass and is called whenever a mouse button is clicked.
+		 * First we check if shift is held down or not. If it is we multi-thread the search for the point that was clicked.
+		 * For each path in paths, a new Thread is created to search through that path for the closest point in a 7x7 area around
+		 * the point located at the center. If a point is found, an AtomicBoolean is set to true by the first thread that finds a match.
+		 * All subsequent thread's cannot change the value of this boolean so they all finish execution and die. This ensures that the
+		 * path is only switched once to the correct path and that's it, even if there are paths that overlap. When a path is swapped,
+		 * the currentPath gets stored in place of the path in paths and that path is swapped to the currentPath, so that you can modify
+		 * it as you normally would any currentPath and the redoBuffer is cleared to prevent issues form arising.
+		 * <p>
+		 * If shift is not held, then we just call updateWaypoints(false).
+		 *
+		 * @param e the MouseEvent (unused) generated when the mouse is clicked in the component
+		 */
 		@Override
 		public void mouseClicked(MouseEvent e) {
 			if(shift) {
@@ -1237,22 +1381,26 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				updateWaypoints(false);
 		}
 
-//		@Override
-//		public void mouseReleased(MouseEvent e) {
-//			System.out.println("IIIIIIIIIIIIIITTTTTTTTTTTTTTTTTTTTTTTTTTTTSSSSSSSSSSSSSSSSSSSSSSSS LITTTTTTTTTTTTTTTTTTTTTTT");
-//		}
-
+		/**
+		 * This function overrides the function in the superclass and is called whenever a mouse button is pressed down. It attempts
+		 * to find a clicked point for moving to modify path segments. First it checks if the cursor is inside the window. If it isn't
+		 * then it prompts the user to move it back in. If it is, then it resets the moveFlag array to the default states and searches
+		 * through the current path to find a clicked point. If it can't find it in the current path it looks through all the stored
+		 * paths in paths (the LinkedHashMap).
+		 *
+		 * @param e the (unused) MouseEvent that is generated whenever a mouse button is pressed.
+		 */
 		@Override
 		public void mousePressed(MouseEvent e) {
 			int[] point;
 			if((point = getCursorPixels(g.getRootPane().getMousePosition())) != null) {
 				java.awt.Point p = new java.awt.Point(point[0], point[1]);
-				moveflag = new Object[]{-1, -1, -1};
+				moveFlag = new Object[]{-1, -1, -1};
 				//Check the current path to see if the clicked point is a part of it and if it isn't then check all the other paths
 				//Only check the other paths if you can't find it in the current one to save time and resources instead of needlessly
 				//searching through extra paths
 				if(!findClickedPoint("current", currentPath, p)) {
-					System.out.println(moveflag[0]);
+					System.out.println(moveFlag[0]);
 					for(Map.Entry<String, BetterArrayList<PathSegment>> en : paths.entrySet())
 						if(findClickedPoint(en.getKey(), en.getValue(), p))
 							break;
@@ -1262,6 +1410,16 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 						JOptionPane.ERROR_MESSAGE);
 		}
 
+		/**
+		 * This function actually does the searching for the clicked point. It is similar to the previous "find" function but instead of
+		 * changing the cursor it sets the moveFlag array accordingly, and if its an unmovable point, it prompts the user to let them
+		 * know that that point is unmovable.
+		 *
+		 * @param name the name of the path, "current" for the current path, otherwise its the key in the LinkedHashMap
+		 * @param path the actual path to search through
+		 * @param p the cursor point
+		 * @return false if it can't find a corresponding point, true otherwise
+		 */
 		private boolean findClickedPoint(String name, BetterArrayList<PathSegment> path, java.awt.Point p) {
 			int i, j = i = 0;
 			java.awt.Point temp = new java.awt.Point();
@@ -1278,12 +1436,12 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 								temp.y = (int) (po.y * yScale) + l;
 								if(p.equals(temp))
 									if(po.movable) {
-										moveflag = new Object[]{name, i, j};
+										moveFlag = new Object[]{name, i, j};
 										return true;
 									} else {
 										JOptionPane.showMessageDialog(g, "You cannot move this point!", "Point Mover",
 												JOptionPane.ERROR_MESSAGE);
-										moveflag = new Object[]{-2, -2, -2};
+										moveFlag = new Object[]{-2, -2, -2};
 										return true;
 									}
 							}
@@ -1296,6 +1454,13 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			return false;
 		}
 
+		/**
+		 * This function simulates a clicked point. It checks if the current path is empty and adds a non-drawn PathSegment if it is.
+		 * Then it adds the new point to the end of the current PathSegment. Finally it generates a new path accordingly.
+		 *
+		 * @param x the x position of the point in feet
+		 * @param y the y position of the point in feet
+		 */
 		private void simClick(double x, double y) {
 			if(currentPath.isEmpty())
 				currentPath.add(new PathSegment(false));
@@ -1303,6 +1468,13 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			genPath(currentPath.getLast(), true);
 		}
 
+		/**
+		 * This function handles a whole bunch of edge cases and the smoothing when going from clicked to drawn or drawn to clicked. It simulates
+		 * a "drawClick" which is the click when you go from drawn to clicked mode.
+		 *
+		 * @param x the x position of the point in feet
+		 * @param y the y position of the point in feet
+		 */
 		private void simDrawClick(double x, double y) {
 			if(!currentPath.isEmpty() && currentPath.getLast().pathSegPoints.isEmpty())
 				currentPath.removeLast();
@@ -1323,6 +1495,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 								robotTrkWidth);
 						pathGen.calculate();
 						if(pathGen.smoothPath != null) {
+							//Generates the left and right paths for the center path.
 							BetterArrayList<Point> temp = convert2DArray(pathGen.smoothPath);
 							BetterArrayList<BetterArrayList<Point>> lAndR = leftRight(temp, robotTrkWidth);
 							if(checkCircleArea(temp) && validatePathSegment(lAndR.get(0)) && validatePathSegment(lAndR.get(1))) {
