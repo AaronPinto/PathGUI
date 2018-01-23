@@ -229,35 +229,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	}
 
 	/**
-	 * This function
-	 */
-	private void undo() {
-		if(!currentPath.isEmpty()) {
-			removeEmptyPaths();
-			if(!currentPath.getLast().pathSegPoints.isEmpty()) {
-				if(firstUndoRedo || redoBuffer.isEmpty()) {
-					firstUndoRedo = false;
-					addPathSegment();
-				}
-				if(currentPath.getLast().isDrawn) {
-					redoBuffer.peekLast().pathSegPoints.add(currentPath.getLast().pathSegPoints.removeLast());
-					redoBuffer.peekLast().leftPSPoints.add(currentPath.getLast().leftPSPoints.removeLast());
-					redoBuffer.peekLast().rightPSPoints.add(currentPath.getLast().rightPSPoints.removeLast());
-				} else {
-					redoBuffer.peekLast().clickPoints.add(currentPath.getLast().clickPoints.removeLast());
-					if(!genPath(currentPath.getLast(), false))
-						redo();
-				}
-			}
-			removeEmptyPaths();
-//			outputRedoBuffer();
-			fig.repaint();
-			pm = PrevMode.UNDO;
-		} else
-			JOptionPane.showConfirmDialog(g, "No More Undos!", "Undo Status", JOptionPane.DEFAULT_OPTION);
-	}
-
-	/**
 	 * Function that creates a new JFrame with  JLabel to display the instructions on how to use this program.
 	 */
 	private void instructions() {
@@ -325,7 +296,49 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	}
 
 	/**
-	 * This function is the counterpart to undo.
+	 * This function removes the most recent update to the current path and adds it to a buffer. It checks if the current path
+	 * is not empty then removes any empty path segments from (ex.) incomplete mode switching, then checks if the new most recent path
+	 * segment has any path points. If this is the first time undo has been called since the last path update, or if the buffer is empty,
+	 * it adds a new path segment to the buffer. Then it checks if the (new) most recent path segment is drawn and if it is it removes
+	 * the last point in the center, left and right paths from the current path and adds them to the buffer. If the most recent path is
+	 * not drawn, it removes the last clicked point and then regenerates the path. If the new path is valid it stays like that, otherwise
+	 * if the new path is invalid, it does not let you undo anymore until you fix that issue. Finally, it clears any newly created empty
+	 * paths, repaints the GUI and sets the previous mode to Undo.
+	 */
+	private void undo() {
+		if(!currentPath.isEmpty()) {
+			removeEmptyPaths();
+			if(!currentPath.getLast().pathSegPoints.isEmpty()) {
+				if(firstUndoRedo || redoBuffer.isEmpty()) {
+					firstUndoRedo = false;
+					addPathSegment();
+				}
+				if(currentPath.getLast().isDrawn) {
+					redoBuffer.peekLast().pathSegPoints.add(currentPath.getLast().pathSegPoints.removeLast());
+				} else {
+					redoBuffer.peekLast().clickPoints.add(currentPath.getLast().clickPoints.removeLast());
+					if(!genPath(currentPath.getLast(), false))
+						redo();
+				}
+			}
+			removeEmptyPaths();
+			outputRedoBuffer();
+			fig.repaint();
+			pm = PrevMode.UNDO;
+		} else
+			JOptionPane.showConfirmDialog(g, "No More Undos!", "Undo Status", JOptionPane.DEFAULT_OPTION);
+	}
+
+	/**
+	 * This function is the inverse of undo. It removes the most recent update to the buffer and adds it to the current path. It checks
+	 * if the redo buffer is not empty then removes any empty path segments, then checks if the current path's current path segment
+	 * isn't of the same type (drawn or not) as the one in the buffer and if the buffer isn't empty and based off that it may add a new
+	 * path segment to the current path. If this is the first time undo has been called since the last path update, or if the buffer is
+	 * empty, it adds a new path segment to the buffer. Then it checks if the (new) most recent path segment is drawn and if it is it
+	 * removes the last point in the center, left and right paths from the current path and adds them to the buffer. If the most recent
+	 * path is not drawn, it removes the last clicked point and then regenerates the path. If the new path is valid it stays like that,
+	 * otherwise if the new path is invalid, it does not let you undo anymore until you fix that issue. Finally, it clears any newly
+	 * created empty paths, repaints the GUI and sets the previous mode to Undo.
 	 */
 	private void redo() {
 		if(!redoBuffer.isEmpty()) {
@@ -342,12 +355,14 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 					!currentPath.getLast().isDrawn))
 				currentPath.add(new PathSegment(true));
 
-//			outputRedoBuffer();
+			outputRedoBuffer();
 
 			if(currentPath.getLast().isDrawn) {
 				currentPath.getLast().pathSegPoints.add(redoBuffer.peekLast().pathSegPoints.removeLast());
-				currentPath.getLast().leftPSPoints.add(redoBuffer.peekLast().leftPSPoints.removeLast());
-				currentPath.getLast().rightPSPoints.add(redoBuffer.peekLast().rightPSPoints.removeLast());
+				BetterArrayList<BetterArrayList<Point>> lr = leftRight(pathGen.smoother(currentPath.getLast().pathSegPoints,
+						0.3, 0.8, 0.000001), robotTrkWidth);
+				currentPath.getLast().leftPSPoints = lr.get(0);
+				currentPath.getLast().rightPSPoints = lr.get(1);
 			} else {
 				currentPath.getLast().clickPoints.add(redoBuffer.peekLast().clickPoints.removeLast());
 				genPath(currentPath.getLast(), true);
@@ -356,7 +371,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			if(redoBuffer.peekLast().pathSegPoints.isEmpty() && redoBuffer.peekLast().clickPoints.isEmpty())
 				redoBuffer.removeLast();
 
-//			outputRedoBuffer();
+			outputRedoBuffer();
 			fig.repaint();
 			pm = PrevMode.REDO;
 		} else
@@ -382,11 +397,13 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				JOptionPane.INFORMATION_MESSAGE);
 	}
 
+	/**
+	 * This function clears all the paths and essentially resets the program, if the user says yes.
+	 */
 	private void clear() {
 		if(!currentPath.isEmpty() || !paths.isEmpty()) {
-			int response = JOptionPane.showConfirmDialog(g, "Are you sure you want to clear everything?", "Window Clearer",
-					JOptionPane.YES_NO_CANCEL_OPTION);
-			if(response == JOptionPane.YES_OPTION) {
+			if(JOptionPane.showConfirmDialog(g, "Are you sure you want to clear everything?", "Window Clearer",
+					JOptionPane.YES_NO_CANCEL_OPTION) == JOptionPane.YES_OPTION) {
 				currentPath.clear();
 				paths.clear();
 				redoBuffer.clear();
@@ -481,15 +498,15 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		}
 	}
 
-//	private void outputRedoBuffer() {
-//		for(PathSegment ps : redoBuffer) {
-//			if(ps.isDrawn)
-//				ps.pathSegPoints.forEach(System.out::println);
-//			else
-//				ps.clickPoints.forEach(System.out::println);
-//			System.out.println("new path seg");
-//		}
-//	}
+	private void outputRedoBuffer() {
+		for(PathSegment ps : redoBuffer) {
+			if(ps.isDrawn)
+				ps.pathSegPoints.forEach(System.out::println);
+			else
+				ps.clickPoints.forEach(System.out::println);
+			System.out.println("new path seg");
+		}
+	}
 
 	/**
 	 * This function adds the current path to the LinkedHashMap paths and then clears the currentPath, if the currentPath isn't empty.
@@ -1210,9 +1227,10 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			if(!paths.isEmpty() || (!currentPath.isEmpty() && !currentPath.get(0).pathSegPoints.isEmpty())) {
 				int response = JOptionPane.showConfirmDialog(g, "Do you want to save your points?", "Point Saver",
 						JOptionPane.YES_NO_CANCEL_OPTION);
-				if(response == JOptionPane.YES_OPTION)
+				if(response == JOptionPane.YES_OPTION) {
 					save();
-				System.exit(0);
+					System.exit(0);
+				} else if(response == JOptionPane.NO_OPTION) System.exit(0);
 			} else System.exit(0);
 		}
 	}
@@ -1238,7 +1256,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		 * a waypoint, adds that to the list of waypoints and then updates the GUI. If you've clicked on a valid point to move, instead of
 		 * drawing a path it will move that point instead, to whatever valid location your cursor is at and then update the path and GUI
 		 * accordingly.
-		 *
+		 * <p>
 		 * If the user is not trying to shift-click a path, then if the user's cursor is within the JFrame, then if the user is trying to move
 		 * a clicked point (moveFlag[1] > -1), move that point based on the cursor position, otherwise call updateWaypoints(true). If the user
 		 * drags their cursor out of the JFrame prompt the user to move their cursor back into the window.
@@ -1324,9 +1342,9 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		 * a path along the field border. Because the first Point is automatically constrained to inside the field, you don't need to display
 		 * an unwieldy cursor that does not tell you, precisely, where the point will be created if you click.
 		 *
-		 * @param path the path to search through
-		 * @param x the x value of the constrained cursor position
-		 * @param y the y value of the constrained cursor position
+		 * @param path   the path to search through
+		 * @param x      the x value of the constrained cursor position
+		 * @param y      the y value of the constrained cursor position
 		 * @param actPos the actual unconstrained cursor position
 		 * @return false if the cursor is not near a clicked point in that path or in any invalid area, true otherwise
 		 */
@@ -1443,7 +1461,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		 *
 		 * @param name the name of the path, "current" for the current path, otherwise its the key in the LinkedHashMap
 		 * @param path the actual path to search through
-		 * @param p the cursor point
+		 * @param p    the cursor point
 		 * @return false if it can't find a corresponding point, true otherwise
 		 */
 		private boolean findClickedPoint(String name, BetterArrayList<PathSegment> path, java.awt.Point p) {
@@ -1586,7 +1604,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 							if(!currentPath.isEmpty() && currentPath.getLast().isDrawn) {
 								currentPath.getLast().pathSegPoints.add(new Point(point[0], point[1]));
 								BetterArrayList<Point> temp = pathGen.smoother(currentPath.getLast().pathSegPoints, 0.3, 0.8, 0.000001);
-								BetterArrayList<BetterArrayList<Point>> lr = leftRight(currentPath.getLast().pathSegPoints, robotTrkWidth);
+								BetterArrayList<BetterArrayList<Point>> lr = leftRight(temp, robotTrkWidth);
 								if(checkCircleArea(temp) && validatePathSegment(lr.get(0)) && validatePathSegment(lr.get(1))) {
 									currentPath.getLast().pathSegPoints = temp;
 									currentPath.getLast().leftPSPoints = lr.get(0);
