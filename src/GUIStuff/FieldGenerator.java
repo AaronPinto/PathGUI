@@ -126,7 +126,32 @@ class FieldGenerator {
 			{54.001, -0.001},
 
 	};
-
+	private double[][] topLeftPC = new double[][]{
+			{incToFt(196.0), 27.0 / 2 + (12.0 + incToFt(9.5)) / 2},
+			{incToFt(196.0) + incToFt(13), 27.0 / 2 + (12.0 + incToFt(9.5)) / 2},
+			{incToFt(196.0) + incToFt(13), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(13)},
+			{incToFt(196.0), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(13)},
+	};
+	private double[][] secondTopLeftPC = new double[][]{
+			{incToFt(196.0), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(15.1 + 13)},
+			{incToFt(196.0) + incToFt(13), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(15.1 + 13)},
+			{incToFt(196.0) + incToFt(13), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(15.1 + 26)},
+			{incToFt(196.0), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(15.1 + 26)},
+	};
+	private double[][] thirdTopLeftPC = new double[][]{
+			{incToFt(196.0), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(30.2 + 26)},
+			{incToFt(196.0) + incToFt(13), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(30.2 + 26)},
+			{incToFt(196.0) + incToFt(13), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(30.2 + 39)},
+			{incToFt(196.0), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(30.2 + 39)},
+	};
+	private double[][] redCableSwitchToPlat = new double[][]{
+			{incToFt(196.0), incToFt(97.25) + (10.791666 / 2)},
+			{incToFt(261.47), incToFt(97.25) + (10.791666 / 2)}
+	};
+	private double[][] cableThroughScale = new double[][]{
+			{27.0, 27.0},
+			{27.0, 0}
+	};
 	//Add all the elements to their respective data structures on object creation.
 	{
 		LinkedHashMap<String, double[][]> invAreas = new LinkedHashMap<>();
@@ -138,6 +163,14 @@ class FieldGenerator {
 		invAreas.put("red bot portal", redBotPortal);
 		invAreas.put("red top portal", flipOverXAxis(redBotPortal));
 		invAreas.put("left switch frame", leftSwitchFrame);
+		invAreas.put("top left power cube", topLeftPC);
+		invAreas.put("top right power cube", flipOverXAndY(topLeftPC));
+		invAreas.put("bottom left power cube", flipOverXAxis(topLeftPC));
+		invAreas.put("bottom right power cube", flipOverXAxis(flipOverXAndY(topLeftPC)));
+		invAreas.put("second top left power cube", secondTopLeftPC);
+		invAreas.put("second top right power cube", flipOverXAndY(secondTopLeftPC));
+		invAreas.put("second bottom left power cube", flipOverXAxis(secondTopLeftPC));
+		invAreas.put("second bottom right power cube", flipOverXAxis(flipOverXAndY(secondTopLeftPC)));
 
 		invAreas.forEach((key, value) -> {
 			double[] xPoints = new double[value.length], yPoints = new double[value.length];
@@ -154,22 +187,37 @@ class FieldGenerator {
 		elements.put("nullLineBot0", flipOverXAndY(nullTop));
 		elements.put("redExZone0", redExZone);
 		elements.put("blueExZone0", flipOverXAndY(redExZone));
-		elements.put("redPcZone0", redPcZone);
+		elements.put("redPcZone0", redPcZone);//Power cube
 		elements.put("bluePcZone0", flipOverXAndY(redPcZone));
+		elements.put("redPlatZoneLineTop0", flipOverXAxis(redPlatZoneLineBot));
+		elements.put("redPlatZoneLineBot0", redPlatZoneLineBot);
+		elements.put("bluePlatZoneLineTop0", flipOverXAndY(redPlatZoneLineBot));
+		elements.put("bluePlatZoneLineBot0", flipOverXAxis(flipOverXAndY(redPlatZoneLineBot)));
+		elements.put("topLeftPC0", topLeftPC);
+		elements.put("bottomLeftPC0", flipOverXAxis(topLeftPC));
+		elements.put("topRightPC0", flipOverXAndY(topLeftPC));
+		elements.put("bottomRightPC0", flipOverXAxis(flipOverXAndY(topLeftPC)));
+		elements.put("secondTopLeftPC0", secondTopLeftPC);
+		elements.put("secondBottomLeftPC0", flipOverXAxis(secondTopLeftPC));
+		elements.put("secondTopRightPC0", flipOverXAndY(secondTopLeftPC));
+		elements.put("secondBottomRightPC0", flipOverXAxis(flipOverXAndY(secondTopLeftPC)));
+		elements.put("thirdTopLeftPC0", thirdTopLeftPC);
+		elements.put("thirdBottomLeftPC0", flipOverXAxis(thirdTopLeftPC));
+		elements.put("thirdTopRightPC0", flipOverXAndY(thirdTopLeftPC));
+		elements.put("thirdBottomRightPC0", flipOverXAxis(flipOverXAndY(thirdTopLeftPC)));
+		elements.put("redCableSwitchToPlat", redCableSwitchToPlat);
+		elements.put("blueCableSwitchToPlat", flipOverXAndY(redCableSwitchToPlat));
 		elements.put("leftSwitchFrame", leftSwitchFrame);
 		elements.put("rightSwitchFrame", flipOverXAndY(leftSwitchFrame));
 		elements.put("leftSwitchTop0", leftSwitchTop);
 		elements.put("leftSwitchBot0", leftSwitchBot);
 		elements.put("rightSwitchTop0", flipOverXAndY(leftSwitchBot));
 		elements.put("rightSwitchBot0", flipOverXAndY(leftSwitchTop));
-		elements.put("redPlatZoneLineTop0", flipOverXAxis(redPlatZoneLineBot));
-		elements.put("redPlatZoneLineBot0", redPlatZoneLineBot);
-		elements.put("bluePlatZoneLineTop0", flipOverXAndY(redPlatZoneLineBot));
-		elements.put("bluePlatZoneLineBot0", flipOverXAxis(flipOverXAndY(redPlatZoneLineBot)));
 		elements.put("redPlat0", redPlat);
 		elements.put("bluePlat0", flipOverXAndY(redPlat));
 		elements.put("redPlatInner0", redPlatInner);
 		elements.put("bluePlatInner0", flipOverXAndY(redPlatInner));
+		elements.put("cableThroughScale", cableThroughScale);
 		elements.put("scaleMid0", scaleMid);
 		elements.put("scaleTop0", flipOverXAndY(scaleBot));
 		elements.put("scaleBot0", scaleBot);
@@ -207,6 +255,7 @@ class FieldGenerator {
 
 	/**
 	 * This function just flips the y values over the x-axis.
+	 *
 	 * @param values the values to flip
 	 * @return the flipped values
 	 */
@@ -222,8 +271,8 @@ class FieldGenerator {
 	/**
 	 * This function is called every time the GUI updates. It redraws all the field elements and sets the colors accordingly.
 	 *
-	 * @param g2 the 2D graphics object for the JFrame
-	 * @param h the height of the field
+	 * @param g2     the 2D graphics object for the JFrame
+	 * @param h      the height of the field
 	 * @param xScale the ratio for number of pixels per foot for the x-axis
 	 * @param yScale the ratio for number of pixels per foot for the y-axis
 	 */
@@ -252,7 +301,9 @@ class FieldGenerator {
 					g2.setPaint(Color.white);
 				else if(key.contains("Mid"))
 					g2.setPaint(Color.lightGray);
-				else
+				else if(key.contains("PC")) {
+					g2.setPaint(Color.yellow);
+				} else
 					g2.setPaint(Color.black);
 				g2.fill(p);
 				continue;
