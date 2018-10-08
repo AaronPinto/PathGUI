@@ -1,5 +1,3 @@
-package GUIStuff;
-
 import java.awt.*;
 import java.awt.geom.Line2D;
 import java.util.ArrayList;
@@ -301,9 +299,9 @@ class FieldGenerator {
 					g2.setPaint(Color.white);
 				else if(key.contains("Mid"))
 					g2.setPaint(Color.lightGray);
-				else if(key.contains("PC")) {
+				else if(key.contains("PC"))
 					g2.setPaint(Color.yellow);
-				} else
+				else
 					g2.setPaint(Color.black);
 				g2.fill(p);
 				continue;

@@ -1,5 +1,3 @@
-package GUIStuff;
-
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
@@ -62,10 +60,10 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	//The JFrame for this GUI. It actually displays the window
 	private final JFrame g = new JFrame("Path GUI Tool");
 
-	//doubles for storing important values, xScale and yScale are the values for
-	//pixels per foot for each axis, respectively, yTickYMax and Min are the max and min values of the y-axis in pixels,
-	//rectWidth and Height are the width and height of the field border in pixels, robotTrkWidth is the track width of the
-	//robot in feet, and ppiX and Y are the pixels per inch for each axis respectively.
+	//doubles for storing important values, xScale and yScale are the values for pixels per foot for each axis, respectively,
+	//yTickYMax and Min are the max and min values of the y-axis in pixels, rectWidth and Height are the width and height of
+	//the field border in pixels, robotTrkWidth is the track width of the robot in feet, and ppiX and Y are the pixels per
+	//inch for each axis respectively.
 	private double xScale, yScale, rectWidth, rectHeight, robotTrkWidth = 24.0889 / 12.0, ppiX, ppiY;
 
 	//Height is an integer which stores the height of this panel in pixels.
@@ -199,7 +197,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	 * @param p the 2D array to converts
 	 * @return the {@code BetterArrayList} containing all the data, if the given array is not null
 	 */
-	public static BetterArrayList<Point> convert2DArray(double[][] p) {
+	static BetterArrayList<Point> convert2DArray(double[][] p) {
 		if(p == null) return new BetterArrayList<>(0);
 		return Arrays.stream(p).map(aP -> new Point(aP[0], aP[1])).collect(Collectors.toCollection(BetterArrayList::new));
 	}
@@ -212,7 +210,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	 * @param p the BetterArrayList to convert to a 2d double array
 	 * @return a 2d double array containing all the points from the BetterArrayList
 	 */
-	public static double[][] convertPointArray(BetterArrayList<Point> p) {
+	static double[][] convertPointArray(BetterArrayList<Point> p) {
 		double[][] temp = new double[p.size()][2];
 		IntStream.range(0, p.size()).forEach(i -> {
 			temp[i][0] = p.get(i).x;
@@ -308,9 +306,9 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 					firstUndoRedo = false;
 					addPathSegment();
 				}
-				if(currentPath.getLast().isDrawn) {
+				if(currentPath.getLast().isDrawn)
 					redoBuffer.peekLast().pathSegPoints.add(currentPath.getLast().pathSegPoints.removeLast());
-				} else {
+				else {
 					redoBuffer.peekLast().clickPoints.add(currentPath.getLast().clickPoints.removeLast());
 					if(!genPath(currentPath.getLast(), false))
 						redo();
@@ -437,11 +435,11 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 								replaceAll("}", " ").replaceAll(";", " ");
 						s = s.trim();
 						String[] o = s.split(", ");
-						if(o[0].equals("true")) {//Syntax for new drawn PathSegment
+						if(o[0].equals("true"))//Syntax for new drawn PathSegment
 							currentPath.add(new PathSegment(true));
-						} else if(o[0].equals("false")) {//Syntax for new non-drawn PathSegment
+						else if(o[0].equals("false"))//Syntax for new non-drawn PathSegment
 							currentPath.add(new PathSegment(false));
-						} else if(!currentPath.isEmpty() && o.length > 1)//This line must contain point values
+						else if(!currentPath.isEmpty() && o.length > 1)//This line must contain point values
 							if(currentPath.getLast().isDrawn)
 								currentPath.getLast().pathSegPoints.add(new Point(Double.parseDouble(o[0]), Double.parseDouble(o[1])));
 							else
@@ -830,8 +828,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			});
 
 			//Makes the last heading value = to the 2nd last for a smoother path.
-			if(heading.length > 1)
-				heading[heading.length - 1] = heading[heading.length - 2];
+			heading[heading.length - 1] = heading[heading.length - 2];
 
 			//Point value calculation, temp.get(0) and temp.get(1) are the left and right paths respectively
 			//Pi / 2 rads = 90 degrees
@@ -960,7 +957,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	 * @return false if the next point is invalid, false if the next point is null and the current point is invalid, true otherwise
 	 */
 	private boolean validatePoint(double x, double y, Point next) {
-		for(Polygon2D p : fg.invalidAreas) {
+		for(Polygon2D p : fg.invalidAreas)
 			if(next != null) {
 				if(p.name.equals("field border") ? p.out(x, y) | p.out(next.x, next.y) : (p.contains(x, y) | p.contains(next.x, next.y)) ||
 						p.intersects(x, y, next)) {
@@ -971,7 +968,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				invalidElementName = p.name;
 				return false;
 			}
-		}
 		return true;
 	}
 
@@ -1249,7 +1245,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			//Initialize the cursor. Checks if the included image is in the correct file location, and if it is it creates
 			//the cursor at the center of the actual image excluding the background.
 			cursor = Toolkit.getDefaultToolkit().createCustomCursor(Toolkit.getDefaultToolkit().getImage(getClass().
-					getResource("/GUIStuff/cursor.png")), new java.awt.Point(7, 7), "invalid");
+					getResource("/cursor.png")), new java.awt.Point(7, 7), "invalid");
 		}
 
 		/**
@@ -1370,13 +1366,12 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 									}
 							}
 						}
-			for(Polygon2D poly : fg.invalidAreas) {
+			for(Polygon2D poly : fg.invalidAreas)
 				if(poly.name.equals("field border") ? !path.isEmpty() && poly.out(actPos.x / xScale, actPos.y / yScale) :
 						poly.contains(x / xScale, y / yScale)) {
 					g.setCursor(cursor);
 					return true;
 				}
-			}
 			return false;
 		}
 

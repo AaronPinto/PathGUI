@@ -1,5 +1,3 @@
-package GUIStuff;
-
 /*
    Licensed to the Apache Software Foundation (ASF) under one or more
    contributor license agreements.  See the NOTICE file distributed with
@@ -118,15 +116,15 @@ public class Polygon2D implements Shape, Cloneable, Serializable {
 			bounds = new Rectangle2D.Double(x, y, 0, 0);
 		} else {
 			path.lineTo(x, y);
-			double _xmax = bounds.getMaxX();
-			double _ymax = bounds.getMaxY();
-			double _xmin = bounds.getMinX();
-			double _ymin = bounds.getMinY();
-			if(x < _xmin) _xmin = x;
-			else if(x > _xmax) _xmax = x;
-			if(y < _ymin) _ymin = y;
-			else if(y > _ymax) _ymax = y;
-			bounds = new Rectangle2D.Double(_xmin, _ymin, _xmax - _xmin, _ymax - _ymin);
+			double xmax = bounds.getMaxX();
+			double ymax = bounds.getMaxY();
+			double xmin = bounds.getMinX();
+			double ymin = bounds.getMinY();
+			if(x < xmin) xmin = x;
+			else if(x > xmax) xmax = x;
+			if(y < ymin) ymin = y;
+			else if(y > ymax) ymax = y;
+			bounds = new Rectangle2D.Double(xmin, ymin, xmax - xmin, ymax - ymin);
 		}
 	}
 
@@ -256,7 +254,7 @@ public class Polygon2D implements Shape, Cloneable, Serializable {
 	 * @param p the next point, to create a line to
 	 * @return <code>true</code> if the lines intersect <code>false</code> otherwise.
 	 */
-	public boolean intersects(double x, double y, PathGUITool.Point p) {
+	boolean intersects(double x, double y, PathGUITool.Point p) {
 		if(p != null) {
 			double[] xs = checkIfClosed(xpoints), ys = checkIfClosed(ypoints);
 			Line2D line = new Line2D.Double(x, y, p.x, p.y);
@@ -273,7 +271,7 @@ public class Polygon2D implements Shape, Cloneable, Serializable {
 	 * @param y the y-coordinate of the current point
 	 * @return <code>true</code> if the lines intersect <code>false</code> otherwise.
 	 */
-	public boolean out(double x, double y) {
+	boolean out(double x, double y) {
 		return x <= this.bounds.getX() || x >= this.bounds.getMaxX() || y <= this.bounds.getY() || y >= this.bounds.getMaxY();
 	}
 

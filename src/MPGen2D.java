@@ -1,5 +1,3 @@
-package GUIStuff;
-
 import java.util.LinkedList;
 import java.util.List;
 
@@ -238,14 +236,14 @@ class MPGen2D {
 	 * @param tol the tolerance of the new points from the old ones
 	 * @return the new smoother path in PathSegment format
 	 */
-	public BetterArrayList<PathGUITool.Point> smoother(BetterArrayList<PathGUITool.Point> p, double wd, double ws, double tol) {
+	BetterArrayList<PathGUITool.Point> smoother(BetterArrayList<PathGUITool.Point> p, double wd, double ws, double tol) {
 		return PathGUITool.convert2DArray(smoother(PathGUITool.convertPointArray(p), wd, ws, tol));
 	}
 
 	/**
 	 * The main calculation function which calculates and smooths the new path
 	 */
-	public void calculate() {
+	void calculate() {
 		if(origPath != null) {
 			//first find only direction changing nodes
 			double[][] nodeOnlyPath = nodeOnlyWayPoints(origPath);

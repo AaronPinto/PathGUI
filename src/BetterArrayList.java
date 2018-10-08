@@ -1,5 +1,3 @@
-package GUIStuff;
-
 import java.util.ArrayList;
 
 /**
@@ -21,7 +19,7 @@ public class BetterArrayList<E> extends ArrayList<E> {
 	/**
 	 * Default constructor
 	 */
-	public BetterArrayList() {
+	BetterArrayList() {
 		super();
 	}
 
@@ -30,7 +28,7 @@ public class BetterArrayList<E> extends ArrayList<E> {
 	 *
 	 * @return the last element in this ArrayList
 	 */
-	public E getLast() {
+	E getLast() {
 		return this.get(this.size() - 1);
 	}
 
@@ -39,7 +37,7 @@ public class BetterArrayList<E> extends ArrayList<E> {
 	 *
 	 * @return the 2nd last element in this ArrayList
 	 */
-	public E get2ndLast() {
+	E get2ndLast() {
 		return this.get(this.size() - 2);
 	}
 
@@ -48,7 +46,7 @@ public class BetterArrayList<E> extends ArrayList<E> {
 	 *
 	 * @return the removed last element in this ArrayList
 	 */
-	public E removeLast() {
+	E removeLast() {
 		return this.remove(this.size() - 1);
 	}
 }
