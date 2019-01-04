@@ -1,267 +1,169 @@
-import java.util.LinkedList;
+import org.apache.commons.math3.linear.*;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
- * This Class provides many useful algorithms for Robot Path Planning. It uses optimization techniques and knowledge
- * of Robot Motion in order to calculate smooth path trajectories, if given only discrete waypoints. The Benefit of
- * these optimization algorithms are very efficient path planning that can be used to navigate in real-time.
- * <p>
- * This Class uses a method of Gradient Descent, and other optimization techniques to produce smooth Velocity profiles
- * for both left and right wheels of a differential drive robot.
- * <p>
- * This Class does not attempt to calculate quintic or cubic splines for best fitting a curve. It is for this reason, the
- * algorithm can be ran on embedded devices with very quick computation times.
- * <p>
- * The output of this function are independent velocity profiles for the left and right wheels of a differential
- * drive chassis. The velocity profiles start and end with 0 velocity and maintain smooth transitions throughout the path.
- *
- * @author https://github.com/KHEngineering/SmoothPathPlanner
+ * @author https://github.com/AtsushiSakai/PythonRobotics/blob/master/PathPlanning/QuinticPolynomialsPlanner/quinticPolynomialsPlanner.py
  * Modified by: Aaron Pinto
  */
-class MPGen2D {
-	double[][] smoothPath;
-	private double[][] origPath;
-	private double timeStep;
-	private double totalTime;
-	private double pathAlpha;
-	private double pathBeta;
-	private double pathTolerance;
+public class MPGen2D {
+	private static final double MIN_T = 1.0, MAX_T = 10.0, dt = 0.01, //Seconds
+			max_accel = 8.0, //ft/s^2
+			max_jerk = 15.0; //ft/s^3
 
-	/**
-	 * Constructor to calculate a new 2D Motion Profile
-	 *
-	 * @param waypoint double[][]
-	 * @param time     double
-	 * @param tStep    double
-	 */
-	MPGen2D(double[][] waypoint, double time, double tStep) {
-		if(waypoint.length == 1) {
-			smoothPath = waypoint;
-			return;
-		} else if(waypoint.length > 0)
-			origPath = doubleArrayDeepCopy(waypoint);
-		else return;
+	ArrayList<ArrayList<Double>> results = new ArrayList<>(Arrays.asList(new ArrayList<>(), new ArrayList<>(), new ArrayList<>(),
+			new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>()));
 
-		pathAlpha = 0.3;
-		pathBeta = 0.7;
-		pathTolerance = 0.0000001;
+	MPGen2D(PathGUITool.Waypoint[] waypoints) {
+		int timeSpliceIndex = 0;
+		for(int i = 0; i < waypoints.length - 1; i++) {
+			List<ArrayList<Double>> temp = quinticPolynomialsPlanner(waypoints[i].x, waypoints[i].y, waypoints[i].yaw, waypoints[i].v, waypoints[i].a,
+					waypoints[i + 1].x, waypoints[i + 1].y, waypoints[i + 1].yaw, waypoints[i + 1].v, waypoints[i + 1].a);
 
-		timeStep = tStep;
-		totalTime = time;
+			//TODO: improve this, it shouldn't just be the removal of a point
+			if(i >= 1) for(ArrayList<Double> doubles : temp) doubles.remove(0);
+
+			for(int j = 0; j < results.size(); j++) results.get(j).addAll(temp.get(j));
+
+			//We don't want each path segment to start with t = 0.0, make the time continuous
+			if(results.get(0).size() > timeSpliceIndex && timeSpliceIndex != 0)
+				for(int j = timeSpliceIndex; j < results.get(0).size(); j++)
+					results.get(0).set(j, results.get(0).get(j) + results.get(0).get(timeSpliceIndex - 1));
+
+			timeSpliceIndex += temp.get(0).size();
+		}
+
+		for(int i = 0; i < results.get(0).size(); i++)
+			System.out.printf("%f %.15f %.16f %.16f %.16f %.16f %.16f\n", results.get(0).get(i), results.get(1).get(i), results.get(2).get(i),
+					results.get(3).get(i), results.get(4).get(i), results.get(5).get(i), results.get(6).get(i));
 	}
 
-	/**
-	 * Performs a deep copy of a 2 Dimensional Array looping through each element in the 2D array
-	 */
-	private static double[][] doubleArrayDeepCopy(double[][] arr) {
-		double[][] temp = new double[arr.length][arr[0].length];
+	public static void main(String[] args) {
+//		new MPGen2D(new PathGUITool.Waypoint[]{
+//				new PathGUITool.Waypoint(0.0, 23.030627871362938, Math.toRadians(0.0), 1.0, 0.0),
+//				new PathGUITool.Waypoint(9.397058823529411, 23.65084226646248, Math.toRadians(4.0), 8.0, 0.0),
+//				new PathGUITool.Waypoint(20.470588235294116, 9.344563552833078, Math.toRadians(-90.0), 8.0, 0.0)
+//		});
 
-		for(int i = 0; i < arr.length; i++) {
-			temp[i] = new double[arr[i].length];
-			System.arraycopy(arr[i], 0, temp[i], 0, arr[i].length);
-		}
-		return temp;
+		new MPGen2D(new PathGUITool.Waypoint[]{
+				new PathGUITool.Waypoint(0.8626198083067093, 22.358490566037734, 0.0, 0.01, 0.1),
+				new PathGUITool.Waypoint(9.287539936102236, 23.80188679245283, 0.06981317007977318, 5.0, 0.0),
+				new PathGUITool.Waypoint(19.926517571884983, 19.952830188679243, -1.5707963267948966, 2.0, 0.0),
+				new PathGUITool.Waypoint(19.49520766773163, 7.160377358490566, -1.5707963267948966, 5.0, 0.0),
+				new PathGUITool.Waypoint(25.159744408945688, 4.783018867924528, 0.5235987755982988, 0.0, 0.0)
+		});
 	}
 
-	private static double[][] nodeOnlyWayPoints(double[][] path) {
-		List<double[]> li = new LinkedList<>();
-		li.add(path[0]);//The starting waypoint
+	static class QuinticPolynomial {
+		private double a0, a1, a2, a3, a4, a5;
+		RealMatrix A;
+		RealVector b;
+		RealVector x;
 
-		//find intermediate nodes and calculate direction
-		for(int i = 1; i < path.length - 1; i++) {
-			/*
-			  Calculates the angle in RADIANS of each successive pair of waypoints.
-			  Vector 1 is the angle in RADIANS that the waypoint at position i-1
-			  makes with the waypoint at position i. The angle is relative to the
-			  x-axis of the waypoint at i-1. Vector 2 is the angle in RADIANS that
-			  the waypoint at position i makes with the waypoint at position i+1.
-			  The angle is relative to a horizontal line at the y value of the waypoint at i.
-			 */
-			double vector1 = Math.atan2((path[i][1] - path[i - 1][1]), path[i][0] - path[i - 1][0]);
-			double vector2 = Math.atan2((path[i + 1][1] - path[i][1]), path[i + 1][0] - path[i][0]);
+		QuinticPolynomial(double xs, double vxs, double axs, double xe, double vxe, double axe, double T) {
+			this.a0 = xs;
+			this.a1 = vxs;
+			this.a2 = axs / 2.0;
 
-			//determine if both vectors have a change in direction greater than 0.1 degrees
-			if(Math.abs(vector2 - vector1) > 0.0017453292519943296)
-				li.add(path[i]);
+			double T2 = T * T, T3 = T * T * T, T4 = T * T * T * T, T5 = T * T * T * T * T;
+
+			//Ax = b, solve for x
+			this.A = new Array2DRowRealMatrix(new double[][]{
+					{T3, T4, T5},
+					{3 * T2, 4 * T3, 5 * T4},
+					{6 * T, 12 * T2, 20 * T3}
+			});
+			this.b = new ArrayRealVector(new double[]{
+					xe - this.a0 - this.a1 * T - this.a2 * T2,
+					vxe - this.a1 - 2 * this.a2 * T,
+					axe - 2 * this.a2}
+			);
+			this.x = new LUDecomposition(this.A).getSolver().solve(b);
+
+			this.a3 = this.x.getEntry(0);
+			this.a4 = this.x.getEntry(1);
+			this.a5 = this.x.getEntry(2);
 		}
-		li.add(path[path.length - 1]);//The last waypoint
 
-		/*
-		  re-write nodes into new 2D Array, first and last points in the waypoint
-		  sequence are always included in the new array even if there is no
-		  direction change between the first to next point and the last to
-		  previous point
-		 */
-		double[][] temp = new double[li.size()][2];
-
-		for(int i = 0; i < li.size(); i++) {
-			temp[i][0] = li.get(i)[0];//X-coordinates
-			temp[i][1] = li.get(i)[1];//Y-coordinates
+		double calcPoint(double t) {
+			return this.a0 + this.a1 * t + this.a2 * (t * t) + this.a3 * (t * t * t) + this.a4 * (t * t * t * t) + this.a5 * (t * t * t * t * t);
 		}
-		return temp;
+
+		double calcFirstDeriv(double t) {
+			return this.a1 + 2 * this.a2 * t + 3 * this.a3 * (t * t) + 4 * this.a4 * (t * t * t) + 5 * this.a5 * (t * t * t * t);
+		}
+
+		double calcSecondDeriv(double t) {
+			return 2 * this.a2 + 6 * this.a3 * t + 12 * this.a4 * (t * t) + 20 * this.a5 * (t * t * t);
+		}
+
+		double calcThirdDeriv(double t) {
+			return 6 * this.a3 + 24 * this.a4 * t + 60 * this.a5 * (t * t);
+		}
 	}
 
-	/**
-	 * This method calculates the optimal parameters for determining what amount of nodes to inject into the path
-	 * to meet the time restraint. This approach uses an iterative process to inject and smooth, yielding more desirable
-	 * results for the final smooth path.
-	 *
-	 * @param numNodeOnlyPoints the number of direction changing waypoints
-	 * @param maxTimeToComplete the max time to complete the path
-	 * @param tStep             the sample/delta time between each point
-	 */
-	private int[] injectionCounter2Steps(double numNodeOnlyPoints, double maxTimeToComplete, double tStep) {
-		int[] ret;
-		int first = 0;
-		int second = 0;
-		int third = 0;
-		double oldPointsTotal = 0;
-		double totalPoints = maxTimeToComplete / tStep;
+	private static List<ArrayList<Double>> quinticPolynomialsPlanner(double sx, double sy, double syaw, double sv, double sa, double gx, double gy, double gyaw, double gv,
+	                                                                 double ga) {
+		double vxs = sv * Math.cos(syaw), vys = sv * Math.sin(syaw), vxg = gv * Math.cos(gyaw), vyg = gv * Math.sin(gyaw);
+		double axs = sa * Math.cos(syaw), ays = sa * Math.sin(syaw), axg = ga * Math.cos(gyaw), ayg = ga * Math.sin(gyaw);
+		ArrayList<Double> time = new ArrayList<>(), rx = new ArrayList<>(), ry = new ArrayList<>(), ryaw = new ArrayList<>(),
+				rv = new ArrayList<>(), ra = new ArrayList<>(), rj = new ArrayList<>();
 
-		if(totalPoints < 100) {
-			double pointsFirst;
-			double pointsTotal;
+		for(double T = MIN_T; T <= MAX_T; T += MIN_T) {
+			QuinticPolynomial xqp = new QuinticPolynomial(sx, vxs, axs, gx, vxg, axg, T);
+			QuinticPolynomial yqp = new QuinticPolynomial(sy, vys, ays, gy, vyg, ayg, T);
 
-			for(int i = 4; i <= 6; i++)
-				for(int j = 1; j <= 8; j++) {
-					pointsFirst = i * (numNodeOnlyPoints - 1) + numNodeOnlyPoints;
-					pointsTotal = (j * (pointsFirst - 1) + pointsFirst);
-					//					System.out.println(pointsFirst + " " + pointsTotal + " " + i + " " + j);
-					if(pointsTotal <= totalPoints && pointsTotal > oldPointsTotal) {
-						first = i;
-						second = j;
-						//						System.out.println(first + " " + second);
-						oldPointsTotal = pointsTotal;
-					}
-				}
-			ret = new int[]{first, second, third};
-		} else {
-			double pointsFirst;
-			double pointsSecond;
-			double pointsTotal;
+			time.clear();
+			rx.clear();
+			ry.clear();
+			ryaw.clear();
+			rv.clear();
+			ra.clear();
+			rj.clear();
 
-			for(int i = 1; i <= 5; i++)
-				for(int j = 1; j <= 8; j++)
-					for(int k = 1; k < 8; k++) {
-						pointsFirst = i * (numNodeOnlyPoints - 1) + numNodeOnlyPoints;
-						pointsSecond = (j * (pointsFirst - 1) + pointsFirst);
-						pointsTotal = (k * (pointsSecond - 1) + pointsSecond);
-//						System.out.println(pointsFirst + " " + pointsSecond + " " + pointsTotal + " " + i + " " + j + " " + k);
+			double t;
+			for(t = 0.0; t < T + dt; t = new BigDecimal(t + dt).setScale(3, RoundingMode.HALF_UP).doubleValue()) {
+				time.add(t);
+				rx.add(xqp.calcPoint(t));
+				ry.add(yqp.calcPoint(t));
 
-						if(pointsTotal <= totalPoints) {
-//							System.out.println(i + " " + j + " " + k);
+				double vx = xqp.calcFirstDeriv(t), vy = yqp.calcFirstDeriv(t);
+				double v = Math.hypot(vx, vy);
+				double yaw = Math.atan2(vy, vx);
+				rv.add(v);
+				ryaw.add(yaw);
 
-							first = i;
-							second = j;
-							third = k;
-						}
-					}
-			ret = new int[]{first, second, third};
-		}
-		return ret;
-	}
+				double ax = xqp.calcSecondDeriv(t), ay = yqp.calcSecondDeriv(t);
+				double a = Math.hypot(ax, ay);
+				if(rv.size() >= 2 && rv.get(rv.size() - 1) - rv.get(rv.size() - 2) < 0.0)
+					a *= -1;
+				ra.add(a);
 
-	/**
-	 * Method interpolates the path by linear injection. The result providing more waypoints along the path.
-	 */
-	private double[][] inject(double[][] orig, int numToInject) {
-		//create extended 2 Dimensional array to hold additional points
-		double morePoints[][] = new double[orig.length + ((numToInject) * (orig.length - 1))][2];
-		//		System.out.println(orig.length + " " + numToInject + " " + (orig.length + ((numToInject) * (orig.length - 1))));
+				double jx = xqp.calcThirdDeriv(t), jy = yqp.calcThirdDeriv(t);
+				double j = Math.hypot(jx, jy);
+				if(ra.size() >= 2 && ra.get(ra.size() - 1) - ra.get(ra.size() - 2) < 0.0)
+					j *= -1;
+				rj.add(j);
+			}
 
-		int index = 0;
+			ArrayList<Double> absRa = new ArrayList<>(ra.size()), absRj = new ArrayList<>(rj.size());
+			for(int i = 0; i < ra.size(); i++) {
+				absRa.add(i, Math.abs(ra.get(i)));
+				absRj.add(i, Math.abs(rj.get(i)));
+			}
 
-		//loop through original array
-		for(int i = 0; i < orig.length - 1; i++) {
-			//copy first
-			morePoints[index][0] = orig[i][0];
-			morePoints[index][1] = orig[i][1];
-			//			System.out.println(morePoints[index][0] + " " + morePoints[index][1] + " " + index + " in");
-			index++;
-			for(int j = 1; j < numToInject + 1; j++) {
-				//calculate intermediate x points between j and j + 1 original points
-				morePoints[index][0] = j * ((orig[i + 1][0] - orig[i][0]) / (numToInject + 1)) + orig[i][0];
-				//calculate intermediate y points  between j and j + 1 original points
-				morePoints[index][1] = j * ((orig[i + 1][1] - orig[i][1]) / (numToInject + 1)) + orig[i][1];
-				//				System.out.println(morePoints[index][0] + " " + morePoints[index][1] + " " + index + " inner");
-				index++;
+			//Test without jerk and see becuz like its robotics lmao who even uses jerk wtf?
+			if(Collections.max(absRa) <= max_accel && Collections.max(absRj) <= max_jerk) {
+				System.out.println("found valid path");
+				break;
 			}
 		}
-		//copy last
-		morePoints[index][0] = orig[orig.length - 1][0];
-		morePoints[index][1] = orig[orig.length - 1][1];
 
-		//		for(int i = 1; i < morePoints.length; i++)
-		//			System.out.println(morePoints[i - 1][0] + " " + morePoints[i - 1][1] + " " + (morePoints[i][0] - morePoints[i - 1][0]));
-
-		return morePoints;
+		return Arrays.asList(time, rx, ry, ryaw, rv, ra, rj);
 	}
-
-	/**
-	 * Optimization algorithm, which optimizes the data points in path to create a smooth trajectory.
-	 * This optimization uses gradient descent. While unlikely, it is possible for this algorithm to never
-	 * converge. If this happens, try increasing the tolerance level.
-	 *
-	 * @param path the path to smooth
-	 * @param weight_data the alpha value, from 0.0-1.0 to control how close the smoothed path is to the original data set
-	 * @param weight_smooth the beta value, from 0.0-1.0 to control how curvy the resulting smooth path is
-	 * @param tolerance the tolerance of the new points from the old ones
-	 * @return the new smoother path in 2D array format
-	 */
-	private double[][] smoother(double[][] path, double weight_data, double weight_smooth, double tolerance) {
-		double[][] newPath = doubleArrayDeepCopy(path);
-		double change = tolerance;
-
-		while(change >= tolerance) {
-			change = 0.0;
-			for(int i = 1; i < path.length - 1; i++)
-				for(int j = 0; j < path[i].length; j++) {
-					double aux = newPath[i][j];
-					newPath[i][j] += weight_data * (path[i][j] - newPath[i][j]) + weight_smooth * (newPath[i - 1][j] +
-							newPath[i + 1][j] - (2.0 * newPath[i][j]));
-					change += Math.abs(aux - newPath[i][j]);
-				}
-		}
-		return newPath;
-	}
-
-	/**
-	 * Optimization algorithm, which optimizes the data points in path to create a smooth trajectory.
-	 * This optimization uses gradient descent. While unlikely, it is possible for this algorithm to never
-	 * converge. If this happens, try increasing the tolerance level.
-	 *
-	 * @param p the PathSegment to smooth
-	 * @param wd the alpha value, from 0.0-1.0 to control how close the smoothed path is to the original data set
-	 * @param ws the beta value, from 0.0-1.0 to control how curvy the resulting smooth path is
-	 * @param tol the tolerance of the new points from the old ones
-	 * @return the new smoother path in PathSegment format
-	 */
-	BetterArrayList<PathGUITool.Point> smoother(BetterArrayList<PathGUITool.Point> p, double wd, double ws, double tol) {
-		return PathGUITool.convert2DArray(smoother(PathGUITool.convertPointArray(p), wd, ws, tol));
-	}
-
-	/**
-	 * The main calculation function which calculates and smooths the new path
-	 */
-	void calculate() {
-		if(origPath != null) {
-			//first find only direction changing nodes
-			double[][] nodeOnlyPath = nodeOnlyWayPoints(origPath);
-
-			//Figure out how many nodes to inject
-			int[] inject = injectionCounter2Steps(nodeOnlyPath.length, totalTime, timeStep);
-
-			//Iteratively inject and smooth the path
-			for(int i = 0; i < inject.length; i++) {
-				if(i == 0) {
-					smoothPath = inject(nodeOnlyPath, inject[0]);
-					smoothPath = smoother(smoothPath, pathAlpha, pathBeta, pathTolerance);
-				} else {
-					smoothPath = inject(smoothPath, inject[i]);
-					smoothPath = smoother(smoothPath, 0.1, 0.3, 0.0000001);
-				}
-			}
-//			Arrays.stream(smoothPath).map(aSmoothPath -> "{" + aSmoothPath[0] + ", " + aSmoothPath[1] + "},").forEach(System.out::println);
-		}
-	}
-}	
+}
