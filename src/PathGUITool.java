@@ -12,44 +12,17 @@ import java.util.stream.*;
 
 /**
  * The program takes the mouse position on the field drawn in the GUI and then based off of that, when the mouse button is
- * clicked, it adds that point to a series of points, called a PathSegment, and generates a path accordingly. The path generation
- * is based off of quintic spline interpolation. Either way, the filename is MPGen2D. The program also has various
- * keyboard shortcuts to make it more intuitive and easy to use. Ctrl + C to copy points on the path in proper Java syntax
- * for a 2D array, Ctrl + N to keep the old paths and start a new one if, for example, you want the robot to follow
- * multiple paths in auto, Ctrl + Z removes each point on the current path and Ctrl + Y adds that point back plus you can
- * hold down the keys and it will rapidly get rid of each point, and Ctrl + O to open and parse a file containing waypoints
- * in proper Java 2D array format, and then display the paths from that file. Most of the printouts are commented out because they
- * were simply for debugging purposes. If you would like to uncomment all of them, just Ctrl + F in your IDE for "System.out.print",
- * and uncomment accordingly.
- * <p>
- * For more information on the field, see: <a href="https://www.youtube.com/watch?v=HZbdwYiCY74">FRC 2018 Game Reveal</a> and
- * <a href="https://firstfrc.blob.core.windows.net/frc2018/Drawings/LayoutandMarkingDiagram.pdf">FRC 2018 Field Drawings</a>
- * <p>
- * For version history and perhaps a later version see: <a href="https://github.com/AaronPinto/PathGUI">PathGUI GitHub</a>
- * <p>
- * References:
- * This class refers to <a href="https://github.com/KHEngineering/SmoothPathPlanner/blob/master/src/usfirst/frc/team2168/robot/FalconLinePlot.java">
- * FalconLinePlot</a> and MPGen2D refers to
- * <a href="https://github.com/AtsushiSakai/PythonRobotics/blob/master/PathPlanning/QuinticPolynomialsPlanner/quintic_polynomials_planner.py">QuinticPolynomialsPlanner</a>
- * I got Polygon2D.java from online, I can't find the exact class, though I deleted a bunch of code and added my own functions in the one I have.
- * I found <a href="https://docs.oracle.com/javase/tutorial/uiswing/examples/components/FileChooserDemoProject/src/components/FileChooserDemo.java">
- * FileChooserDemo</a> online as well to start me off with the Save and Open File Dialogs.
+ * clicked, it prompts the user for a desired heading, velocity and acceleration for that point and then adds that point
+ * to a series of points and generates a path accordingly. The path generation is based of cubic spline interpolation.
  *
  * @author Aaron Pinto
- * ICS4UR
- * Mr. Le
- * January 22nd, 2018
  * @see BetterArrayList
  * @see FieldGenerator
  * @see Polygon2D
  * @see MPGen2D
- * @see Point
- * @see PathSegment
+ * @see Path
  */
 public class PathGUITool extends JPanel implements ClipboardOwner {
-	//The path generator object that also stores the points of the generator path
-	private static MPGen2D pathGen;
-
 	//An object of this class, used for the Ctrl + C code
 	private static PathGUITool fig;
 
@@ -60,33 +33,29 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	//yTickYMax and Min are the max and min values of the y-axis in pixels, rectWidth and Height are the width and height of
 	//the field border in pixels, robotTrkWidth is the track width of the robot in feet, and ppiX and Y are the pixels per
 	//inch for each axis respectively.
-	private double xScale, yScale, rectWidth, rectHeight, robotTrkWidth = 24.0889 / 12.0, ppiX, ppiY;
+	private double xScale, yScale, rectWidth, rectHeight, ppiX, ppiY;
 
 	//Height is an integer which stores the height of this panel in pixels.
 	private int height;
 
 	//A BetterArrayList of PathSegments which stores the values of the current path.
-	private BetterArrayList<PathSegment> currentPath = new BetterArrayList<>();
+	private Path currentPath = new Path();
 
 	//LinkedHashMap to store the name and path for all previous paths
-	private final LinkedHashMap<String, BetterArrayList<PathSegment>> paths = new LinkedHashMap<>();
+	private final LinkedHashMap<String, Path> paths = new LinkedHashMap<>();
 
-	//booleans for handling different conditions, firstUndoRedo is set to false when Undo is pressed for the first time
-	private boolean firstUndoRedo = false, shift = false;
-
-	//Enum object to store the previous mode value
-	private PrevMode pm;
+	//boolean for storing if shift is pressed
+	private boolean shift = false;
 
 	//An object array to store the index values necessary to locate a movable point in paths.
-	//moveFlag[0] is the path name, moveFlag[1] is the PathSegment index, moveFlag[2] is the Point index
-	private Object[] moveFlag = new Object[]{-1, -1, -1};
+	//moveFlag[0] is the path name, moveFlag[1] is the Point index
+	private Object[] moveFlag = new Object[]{-1, -1};
 
 	//Field generator object that contains all of the necessary shapes for the field drawing
 	private final FieldGenerator fg = new FieldGenerator();
 
-	//ArrayDeque for storing the Ctrl + Z'd points
-	//add() adds last, peek() gets first
-	private final Deque<PathSegment> redoBuffer = new ArrayDeque<>();
+	//Path for storing the Ctrl + Z'd points
+	private final Path redoBuffer = new Path();
 
 	/**
 	 * Constructor.
@@ -126,24 +95,11 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		menuItem.addActionListener(ml);
 		menu.add(menuItem);
 
-		menuItem = new JMenuItem("Toggle Draw Mode (Ctrl + D)", KeyEvent.VK_D);
-		menuItem.addActionListener(ml);
-		menu.add(menuItem);
-
 		menuItem = new JMenuItem("Copy Points (Ctrl + C)", KeyEvent.VK_C);
 		menuItem.addActionListener(ml);
 		menu.add(menuItem);
 
 		menuItem = new JMenuItem("Clear All (Ctrl + A)", KeyEvent.VK_A);
-		menuItem.addActionListener(ml);
-		menu.add(menuItem);
-
-		//Build third menu in the menu bar.
-		menu = new JMenu("Instructions");
-		menu.setMnemonic(KeyEvent.VK_I);
-		menuBar.add(menu);
-
-		menuItem = new JMenuItem("View Instructions (Ctrl + I)", KeyEvent.VK_I);
 		menuItem.addActionListener(ml);
 		menu.add(menuItem);
 
@@ -185,9 +141,9 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 
 	private static BetterArrayList<Waypoint> convert2DArray(MPGen2D pathGen) {
 		BetterArrayList<Waypoint> temp = new BetterArrayList<>();
-		ArrayList<ArrayList<Double>> dank = pathGen.results;
-		for(int i = 0; i < dank.get(0).size(); i++)
-			temp.add(new Waypoint(dank.get(1).get(i), dank.get(2).get(i), dank.get(3).get(i), dank.get(4).get(i), dank.get(5).get(i)));
+		ArrayList<ArrayList<Double>> results = pathGen.results;
+		for(int i = 0; i < results.get(0).size(); i++)
+			temp.add(new Waypoint(results.get(1).get(i), results.get(2).get(i), results.get(3).get(i), results.get(4).get(i), results.get(5).get(i)));
 		return temp;
 	}
 
@@ -204,52 +160,11 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	}
 
 	/**
-	 * Function that creates a new JFrame with a JLabel to display the instructions on how to use this program.
-	 */
-	private void instructions() {
-		JFrame j = new JFrame("Instructions");
-		j.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-		j.addWindowListener(new WindowAdapter() {
-			@Override
-			public void windowClosing(WindowEvent e) {
-				g.setEnabled(true);
-				j.dispose();
-			}
-		});
-		j.setSize(1024, 470);
-		j.setLayout(new BorderLayout(10, 10));
-		j.setLocationRelativeTo(null);
-		j.setResizable(false);
-		String text = "The program takes the mouse position on the field drawn in the GUI and then based off of that, when the mouse button is " +
-				"clicked, it adds that point to a series of points, called a PathSegment, and generates a path accordingly. This is called " +
-				"click mode. The path generation is based off of the generator that we currently use. The filename is MPGen2D.\n<br><br>" +
-				"<table border=\"1\" cellpadding=\"2\" cellspacing=\"0\"><tr><th>&nbsp&nbsp&nbsp Shortcut &nbsp&nbsp&nbsp</th><th>Description" +
-				"</th></tr><tr><th>CTRL + D</th><th>Draw mode is toggleable off/on and by default it is on, which means you can use it in " +
-				"tandem with click mode, and it automatically switches depending on whether or not you hold the left button on your mouse " +
-				"down or not. Drag mode essentially allows you to draw a path yourself without having to generate one each time. It allows" +
-				" for more freedom of design regarding the path that the robot follows.</th> </tr> <tr> <th>CTRL + C</th> <th>Copies all " +
-				"the points from all the points path, and each path is in proper Java syntax for a 2D array.</th> </tr> <tr> <th>CTRL + N" +
-				"</th> <th>Keeps the old paths and starts a new one if, for example, you want the robot to follow multiple paths in auto." +
-				"</th> </tr> <tr> <th>CTRL + Z</th> <th>Removes each point on the current path. (If the path segment is drawn, it removes " +
-				"each point individually, otherwise it removes each clicked point.)</th> </tr> <tr> <th>CTRL + Y</th> <th>Adds that point" +
-				" back (If the path segment is drawn, it adds each point individually, otherwise it adds each clicked point.)</th> </tr> " +
-				"<tr> <th>CTRL + O</th> <th>Opens and parses the selected file containing waypoints in proper Java 2D array syntax, and " +
-				"then display the paths from that file.</th> </tr> <tr> <th>CTRL + I</th> <th>Opens the instructions on how to use this " +
-				"program.</th> </tr> <tr> <th>CTRL + A</th> <th>Clears all the paths on the field.</th> </tr> <tr> <th>CTRL + S</th> <th>" +
-				"Saves the current paths to a file.</th> </tr> </table>";
-		JLabel l = new JLabel("<html><div style='text-align: center;'>" + text + "</div></html>", SwingConstants.CENTER);
-		l.setFont(new Font("Arial", Font.PLAIN, 15));
-		j.add(l);
-		j.setVisible(true);
-		g.setEnabled(false);
-	}
-
-	/**
 	 * This function saves the points in each path to a file in proper Java 2D array syntax. It checks if any paths are not empty
 	 * and if so, it saves those points to a file, otherwise it lets the user know that they cannot save nothing.
 	 */
 	private void save() {
-		if(!paths.isEmpty() || (!currentPath.isEmpty() && !currentPath.get(0).pathSegPoints.isEmpty())) {
+		if(!paths.isEmpty() || !currentPath.isEmpty()) {
 			try {
 				Calendar c = Calendar.getInstance();
 				JFileChooser jfc = new JFileChooser();
@@ -284,18 +199,10 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	 */
 	private void undo() {
 		if(!currentPath.isEmpty()) {
-			removeEmptyPaths();
-			if(!currentPath.getLast().pathSegPoints.isEmpty()) {
-				if(firstUndoRedo || redoBuffer.isEmpty()) {
-					firstUndoRedo = false;
-					addPathSegment();
-				}
-				redoBuffer.peekLast().clickPoints.add(currentPath.getLast().clickPoints.removeLast());
-			}
-			removeEmptyPaths();
+			redoBuffer.clickPoints.add(currentPath.clickPoints.removeLast());
+			genPath(currentPath);
 			outputRedoBuffer();
 			fig.repaint();
-			pm = PrevMode.UNDO;
 		} else
 			JOptionPane.showConfirmDialog(g, "No More Undos!", "Undo Status", JOptionPane.DEFAULT_OPTION);
 	}
@@ -311,26 +218,11 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	 */
 	private void redo() {
 		if(!redoBuffer.isEmpty()) {
-			if(redoBuffer.peekLast().pathSegPoints.isEmpty() && redoBuffer.peekLast().clickPoints.isEmpty())
-				redoBuffer.removeLast();
-			/*
-			  You only want to add a path segment to the current path if the current path's current path segment
-			  isn't of the same type (drawn or not) as the one in the buffer and of course if the buffer isn't empty
-			*/
-			if(!redoBuffer.peekLast().clickPoints.isEmpty() && currentPath.isEmpty())
-				currentPath.add(new PathSegment());
-
 			outputRedoBuffer();
-
-			currentPath.getLast().clickPoints.add(redoBuffer.peekLast().clickPoints.removeLast());
-			genPath(currentPath.getLast());
-
-			if(redoBuffer.peekLast().pathSegPoints.isEmpty() && redoBuffer.peekLast().clickPoints.isEmpty())
-				redoBuffer.removeLast();
-
+			currentPath.clickPoints.add(redoBuffer.clickPoints.removeLast());
 			outputRedoBuffer();
+			genPath(currentPath);
 			fig.repaint();
-			pm = PrevMode.REDO;
 		} else
 			JOptionPane.showConfirmDialog(g, "No More Redos!", "Redo Status", JOptionPane.DEFAULT_OPTION);
 	}
@@ -355,7 +247,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				currentPath.clear();
 				paths.clear();
 				redoBuffer.clear();
-				firstUndoRedo = shift = false;
+				shift = false;
 				fig.repaint();
 			}
 		} else
@@ -392,10 +284,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 								replaceAll("}", " ").replaceAll(";", " ");
 						s = s.trim();
 						String[] o = s.split(", ");
-						if(o[0].equals("false"))//Syntax for new PathSegment
-							currentPath.add(new PathSegment());
-						else if(!currentPath.isEmpty() && o.length > 1)//This line must contain point values
-							currentPath.getLast().clickPoints.add(new Waypoint(Double.parseDouble(o[0]), Double.parseDouble(o[1]), Double.parseDouble(o[2]),
+						if(o.length > 1)//This line must contain point values
+							currentPath.clickPoints.add(new Waypoint(Double.parseDouble(o[0]), Double.parseDouble(o[1]), Double.parseDouble(o[2]),
 									Double.parseDouble(o[3]), Double.parseDouble(o[4])));
 					}
 					fileReader.close();
@@ -413,34 +303,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		}
 	}
 
-	/**
-	 * Adds a new path segment to the redoBuffer in order to preserve the entire path as it is, instead of just adding all
-	 * the points to one path segment.
-	 */
-	private void addPathSegment() {
-		if(!currentPath.isEmpty())
-			redoBuffer.add(new PathSegment());
-	}
-
-	/**
-	 * This function removes any empty paths that may be created whenever, most likely when mode switching and then not completing
-	 * the mode switch, for example activate the clickDraw mode (creates an empty drawn path) and then undoing (calls this function).
-	 */
-	private void removeEmptyPaths() {
-		if(currentPath.getLast().pathSegPoints.isEmpty()) {
-			currentPath.removeLast();
-			addPathSegment();
-		} else if(currentPath.getLast().clickPoints.isEmpty()) {
-			currentPath.removeLast();
-			addPathSegment();
-		}
-	}
-
 	private void outputRedoBuffer() {
-		for(PathSegment ps : redoBuffer) {
-			ps.clickPoints.forEach(System.out::println);
-			System.out.println("new path seg");
-		}
+		redoBuffer.clickPoints.forEach(System.out::println);
 	}
 
 	/**
@@ -449,7 +313,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	private void addToPathsAndClear() {
 		if(!currentPath.isEmpty()) {
 			paths.put(String.format("path%d", paths.size() + 1), currentPath);
-			currentPath = new BetterArrayList<>();
+			currentPath = new Path();
 			fig.repaint();
 		}
 	}
@@ -513,58 +377,54 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	 * @param g2   the 2D graphics object used to draw everything
 	 * @param path the path to draw/plot
 	 */
-	private void plotPath(Graphics2D g2, BetterArrayList<PathSegment> path) {
-		System.out.println("number of path segments: " + path.size() + " " + pm);
-		//For each path segment print out the corresponding points.
-		for(PathSegment aPath : path) {
-			System.out.println(aPath.pathSegPoints.size() + " " + aPath.clickPoints.size());
-			//Draw clicked points
-			if(aPath.clickPoints.size() > 1)
-				for(int j = 0; j < aPath.clickPoints.size() - 1; j++) {
-					double x1 = 30 + xScale * aPath.clickPoints.get(j).x, y1 = height - 30 - yScale * aPath.clickPoints.get(j).y,
-							x2 = 30 + xScale * aPath.clickPoints.get(j + 1).x, y2 = height - 30 - yScale * aPath.clickPoints.get(j + 1).y;
-					g2.setPaint(Color.magenta);
-					g2.draw(new Line2D.Double(x1, y1, x2, y2));
-					g2.fill(new Ellipse2D.Double(x1 - 3, y1 - 3, 6, 6));
-					g2.fill(new Ellipse2D.Double(x2 - 3, y2 - 3, 6, 6));
-				}
-			else if(aPath.clickPoints.size() == 1) {
-				double x1 = 30 + xScale * aPath.clickPoints.get(0).x, y1 = height - 30 - yScale * aPath.clickPoints.get(0).y;
+	private void plotPath(Graphics2D g2, Path path) {
+		System.out.println(path.pathSegPoints.size() + " " + path.clickPoints.size());
+		//Draw clicked points
+		if(path.clickPoints.size() > 1)
+			for(int j = 0; j < path.clickPoints.size() - 1; j++) {
+				double x1 = 30 + xScale * path.clickPoints.get(j).x, y1 = height - 30 - yScale * path.clickPoints.get(j).y,
+						x2 = 30 + xScale * path.clickPoints.get(j + 1).x, y2 = height - 30 - yScale * path.clickPoints.get(j + 1).y;
 				g2.setPaint(Color.magenta);
+				g2.draw(new Line2D.Double(x1, y1, x2, y2));
 				g2.fill(new Ellipse2D.Double(x1 - 3, y1 - 3, 6, 6));
+				g2.fill(new Ellipse2D.Double(x2 - 3, y2 - 3, 6, 6));
 			}
+		else if(path.clickPoints.size() == 1) {
+			double x1 = 30 + xScale * path.clickPoints.get(0).x, y1 = height - 30 - yScale * path.clickPoints.get(0).y;
+			g2.setPaint(Color.magenta);
+			g2.fill(new Ellipse2D.Double(x1 - 3, y1 - 3, 6, 6));
+		}
 
-			//Draw all the pathSegPoints, leftPoints and rightPoints
-			if(aPath.pathSegPoints.size() > 1)
-				for(int j = 0; j < aPath.pathSegPoints.size() - 1; j++) {
-					double x1 = 30 + xScale * aPath.pathSegPoints.get(j).x, y1 = height - 30 - yScale * aPath.pathSegPoints.get(j).y,
-							x2 = 30 + xScale * aPath.pathSegPoints.get(j + 1).x, y2 = height - 30 - yScale * aPath.pathSegPoints.get(j + 1).y;
-					g2.setPaint(Color.green);
-					g2.draw(new Line2D.Double(x1, y1, x2, y2));
-					g2.fill(new Ellipse2D.Double(x1 - 2, y1 - 2, 4, 4));
-					g2.fill(new Ellipse2D.Double(x2 - 2, y2 - 2, 4, 4));
-
-					if(!aPath.leftPSPoints.isEmpty())
-						if(j < aPath.leftPSPoints.size() - 1) {
-							double lx1 = 30 + xScale * aPath.leftPSPoints.get(j).x, ly1 = height - 30 - yScale * aPath.leftPSPoints.get(j).y,
-									lx2 = 30 + xScale * aPath.leftPSPoints.get(j + 1).x, ly2 = height - 30 - yScale * aPath.leftPSPoints.get(j + 1).y,
-									rx1 = 30 + xScale * aPath.rightPSPoints.get(j).x, ry1 = height - 30 - yScale * aPath.rightPSPoints.get(j).y,
-									rx2 = 30 + xScale * aPath.rightPSPoints.get(j + 1).x, ry2 = height - 30 - yScale * aPath.rightPSPoints.get(j + 1).y;
-							g2.setPaint(Color.gray);
-							g2.draw(new Line2D.Double(lx1, ly1, lx2, ly2));
-							g2.fill(new Ellipse2D.Double(lx1 - 2, ly1 - 2, 4, 4));
-							g2.fill(new Ellipse2D.Double(lx2 - 2, ly2 - 2, 4, 4));
-							g2.setPaint(Color.lightGray);
-							g2.draw(new Line2D.Double(rx1, ry1, rx2, ry2));
-							g2.fill(new Ellipse2D.Double(rx1 - 2, ry1 - 2, 4, 4));
-							g2.fill(new Ellipse2D.Double(rx2 - 2, ry2 - 2, 4, 4));
-						}
-				}
-			else if(aPath.pathSegPoints.size() == 1) {
-				double x1 = 30 + xScale * aPath.pathSegPoints.get(0).x, y1 = height - 30 - yScale * aPath.pathSegPoints.get(0).y;
+		//Draw all the pathSegPoints, leftPoints and rightPoints
+		if(path.pathSegPoints.size() > 1)
+			for(int j = 0; j < path.pathSegPoints.size() - 1; j++) {
+				double x1 = 30 + xScale * path.pathSegPoints.get(j).x, y1 = height - 30 - yScale * path.pathSegPoints.get(j).y,
+						x2 = 30 + xScale * path.pathSegPoints.get(j + 1).x, y2 = height - 30 - yScale * path.pathSegPoints.get(j + 1).y;
 				g2.setPaint(Color.green);
+				g2.draw(new Line2D.Double(x1, y1, x2, y2));
 				g2.fill(new Ellipse2D.Double(x1 - 2, y1 - 2, 4, 4));
+				g2.fill(new Ellipse2D.Double(x2 - 2, y2 - 2, 4, 4));
+
+				if(!path.leftPSPoints.isEmpty())
+					if(j < path.leftPSPoints.size() - 1) {
+						double lx1 = 30 + xScale * path.leftPSPoints.get(j).x, ly1 = height - 30 - yScale * path.leftPSPoints.get(j).y,
+								lx2 = 30 + xScale * path.leftPSPoints.get(j + 1).x, ly2 = height - 30 - yScale * path.leftPSPoints.get(j + 1).y,
+								rx1 = 30 + xScale * path.rightPSPoints.get(j).x, ry1 = height - 30 - yScale * path.rightPSPoints.get(j).y,
+								rx2 = 30 + xScale * path.rightPSPoints.get(j + 1).x, ry2 = height - 30 - yScale * path.rightPSPoints.get(j + 1).y;
+						g2.setPaint(Color.gray);
+						g2.draw(new Line2D.Double(lx1, ly1, lx2, ly2));
+						g2.fill(new Ellipse2D.Double(lx1 - 2, ly1 - 2, 4, 4));
+						g2.fill(new Ellipse2D.Double(lx2 - 2, ly2 - 2, 4, 4));
+						g2.setPaint(Color.lightGray);
+						g2.draw(new Line2D.Double(rx1, ry1, rx2, ry2));
+						g2.fill(new Ellipse2D.Double(rx1 - 2, ry1 - 2, 4, 4));
+						g2.fill(new Ellipse2D.Double(rx2 - 2, ry2 - 2, 4, 4));
+					}
 			}
+		else if(path.pathSegPoints.size() == 1) {
+			double x1 = 30 + xScale * path.pathSegPoints.get(0).x, y1 = height - 30 - yScale * path.pathSegPoints.get(0).y;
+			g2.setPaint(Color.green);
+			g2.fill(new Ellipse2D.Double(x1 - 2, y1 - 2, 4, 4));
 		}
 	}
 
@@ -721,11 +581,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	 * @param output the StringBuilder to append the values of the path to.
 	 * @param value  the path to parse, format and get the values from.
 	 */
-	private void outputPath(StringBuilder output, BetterArrayList<PathSegment> value) {
-		for(PathSegment path : value) {
-			output.append("{").append(false).append(", ").append(false).append("},\n");//Indicator that the path is not drawn (used for parsing)
-			output.append(path.clickPoints.stream().map(clickPoint -> "{" + clickPoint + "},\n").collect(Collectors.joining()));
-		}
+	private void outputPath(StringBuilder output, Path value) {
+		output.append(value.clickPoints.stream().map(clickPoint -> "{" + clickPoint + "},\n").collect(Collectors.joining()));
 		output.append("};\n");
 	}
 
@@ -777,7 +634,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	}
 
 	/**
-	 * This function generates pathSegPoints from the clicked points and is only called with a clicked PathSegment. It generates
+	 * This function generates pathSegPoints from the clicked points and is only called with a clicked Path. It generates
 	 * the center path first and then if that wasn't null, it will generate the left and right paths, check if those are valid,
 	 * assign those to the given pathSegment's left and right path BetterArrayLists respectively, and return true, else it will
 	 * remove the last point if remove is true, show the fieldError and return false.
@@ -785,10 +642,11 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	 * @param ps the pathSegment to get the clickPoints from and generate a paths from them
 	 * @return true if the generated path was valid else false
 	 */
-	private void genPath(PathSegment ps) {
-		pathGen = new MPGen2D(convertPointArray(ps.clickPoints));
+	private void genPath(Path ps) {
+		//The path generator object that also stores the points of the generator path
+		MPGen2D pathGen = new MPGen2D(convertPointArray(ps.clickPoints));
 		BetterArrayList<Waypoint> temp = convert2DArray(pathGen);
-		BetterArrayList<BetterArrayList<Waypoint>> lAndR = leftRight(temp, robotTrkWidth);
+		BetterArrayList<BetterArrayList<Waypoint>> lAndR = leftRight(temp, 24.0889 / 12.0);
 		ps.pathSegPoints = temp;
 		ps.leftPSPoints = lAndR.get(0);
 		ps.rightPSPoints = lAndR.get(1);
@@ -828,15 +686,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	}
 
 	/**
-	 * An enum with the different modes in this program. Based on the previous mode, a different set on instructions for PathSegment or Point
-	 * joining is executed.
-	 */
-	private enum PrevMode {
-		CLICK, UNDO, REDO
-	}
-
-	/**
-	 *
+	 * Get the waypoint's kinematic values
 	 *
 	 * @return the yaw, speed and acceleration values for the waypoint
 	 */
@@ -887,17 +737,28 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 	 * A path segment can either be drawn or clicked and we need to keep track of that for the different keyboard shortcuts
 	 * It also needs to store the points of a path segment and if the path segment is clicked, then it needs to store those waypoints as well
 	 */
-	class PathSegment {
+	class Path {
 		BetterArrayList<Waypoint> pathSegPoints, clickPoints, leftPSPoints, rightPSPoints;
 
 		/**
-		 * Constructor for a PathSegment
+		 * Constructor for a Path
 		 */
-		PathSegment() {
+		Path() {
 			this.pathSegPoints = new BetterArrayList<>();
 			this.clickPoints = new BetterArrayList<>(0);
 			this.leftPSPoints = new BetterArrayList<>();
 			this.rightPSPoints = new BetterArrayList<>();
+		}
+
+		boolean isEmpty() {
+			return this.pathSegPoints.isEmpty() && this.clickPoints.isEmpty();
+		}
+
+		void clear() {
+			this.pathSegPoints.clear();
+			this.clickPoints.clear();
+			this.leftPSPoints.clear();
+			this.rightPSPoints.clear();
 		}
 	}
 
@@ -922,7 +783,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			else if(e.getActionCommand().equals("New Path (Ctrl + N)") && !currentPath.isEmpty())
 				addToPathsAndClear();//CTRL + N
 			else if(e.getActionCommand().equals("Open (Ctrl + O)")) open();//CTRL + O
-			else if(e.getActionCommand().equals("View Instructions (Ctrl + I)")) instructions();//CTRL + I
 			else if(e.getActionCommand().equals("Save (Ctrl + S)")) save();//CTRL + S
 			else if(e.getActionCommand().equals("Clear All (Ctrl + A)")) clear();//CTRL + A
 		}
@@ -954,8 +814,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 					addToPathsAndClear();
 				else if(e.getExtendedKeyCode() == 79)//CTRL + O
 					open();
-				else if(e.getExtendedKeyCode() == 73)//CTRL + I
-					instructions();
 				else if(e.getExtendedKeyCode() == 83)//CTRL + S
 					save();
 				else if(e.getExtendedKeyCode() == 65)//CTRL + A
@@ -994,7 +852,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		 */
 		@Override
 		public void windowClosing(WindowEvent e) {
-			if(!paths.isEmpty() || (!currentPath.isEmpty() && !currentPath.get(0).pathSegPoints.isEmpty())) {
+			if(!paths.isEmpty() || !currentPath.isEmpty()) {
 				int response = JOptionPane.showConfirmDialog(g, "Do you want to save your points?", "Point Saver",
 						JOptionPane.YES_NO_CANCEL_OPTION);
 				if(response == JOptionPane.YES_OPTION) {
@@ -1037,16 +895,16 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		public void mouseDragged(MouseEvent e) {
 			if(!shift) {
 				System.out.println(moveFlag[0]);
-				int mf1 = (int) moveFlag[1], mf2 = (int) moveFlag[2];
+				int mf1 = (int) moveFlag[1];
 				if(mf1 > -1) {
 					double[] point;
 					if((point = getCursorFeet(g.getRootPane().getMousePosition())) != null) {
 						if(moveFlag[0].equals("current")) {
-							currentPath.get(mf1).clickPoints.get(mf2).x = point[0];
-							currentPath.get(mf1).clickPoints.get(mf2).y = point[1];
+							currentPath.clickPoints.get(mf1).x = point[0];
+							currentPath.clickPoints.get(mf1).y = point[1];
 						} else {
-							paths.get(moveFlag[0].toString()).get(mf1).clickPoints.get(mf2).x = point[0];
-							paths.get(moveFlag[0].toString()).get(mf1).clickPoints.get(mf2).y = point[1];
+							paths.get(moveFlag[0].toString()).clickPoints.get(mf1).x = point[0];
+							paths.get(moveFlag[0].toString()).clickPoints.get(mf1).y = point[1];
 						}
 						fig.repaint();
 					} else
@@ -1080,7 +938,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 					p.y = (height - 30 + g.getJMenuBar().getHeight()) - p.y;
 					if(!findPoint(currentPath, point[0], point[1])) {
 						if(paths.isEmpty()) g.setCursor(Cursor.getDefaultCursor());
-						for(Map.Entry<String, BetterArrayList<PathSegment>> en : paths.entrySet())
+						for(Map.Entry<String, Path> en : paths.entrySet())
 							if(findPoint(en.getValue(), point[0], point[1])) return;
 						g.setCursor(Cursor.getDefaultCursor());
 					}
@@ -1106,20 +964,19 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		 * @param y    the y value of the constrained cursor position
 		 * @return false if the cursor is not near a clicked point in that path or in any invalid area, true otherwise
 		 */
-		private boolean findPoint(BetterArrayList<PathSegment> path, int x, int y) {
+		private boolean findPoint(Path path, int x, int y) {
 			int tx, ty;
-			for(PathSegment ps : path)
-				for(Waypoint po : ps.clickPoints)
-					for(int k = -3; k < 4; k++) {
-						tx = (int) (po.x * xScale) + k;
-						for(int l = -3; l < 4; l++) {
-							ty = (int) (po.y * yScale) + l;
-							if(x == tx && y == ty) {
-								g.setCursor(cursor);
-								return true;
-							}
+			for(Waypoint po : path.clickPoints)
+				for(int k = -3; k < 4; k++) {
+					tx = (int) (po.x * xScale) + k;
+					for(int l = -3; l < 4; l++) {
+						ty = (int) (po.y * yScale) + l;
+						if(x == tx && y == ty) {
+							g.setCursor(cursor);
+							return true;
 						}
 					}
+				}
 			return false;
 		}
 
@@ -1146,26 +1003,25 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 					java.awt.Point p = new java.awt.Point(point[0], point[1]), temp = new java.awt.Point();
 					System.out.println(p.x + " " + p.y);
 					paths.forEach((key, value) -> new Thread(() -> {
-						for(PathSegment ps : value)
-							for(Waypoint po : ps.pathSegPoints)
-								for(int k = -3; k < 4; k++) {
-									temp.x = (int) (po.x * xScale) + k;
-									for(int l = -3; l < 4; l++) {
-										temp.y = (int) (po.y * yScale) + l;
-										if(p.equals(temp))
-											if(b.compareAndSet(false, true)) {
-												JOptionPane.showMessageDialog(g, "Successfully switched paths!",
-														"Path Switcher", JOptionPane.INFORMATION_MESSAGE);
-												System.out.println("Path switch successful");
-												BetterArrayList<PathSegment> swap = currentPath;
-												currentPath = paths.get(key);
-												paths.put(key, swap);
-												redoBuffer.clear();
-												shift = false;
-												return;
-											} else return;
-									}
+						for(Waypoint po : value.pathSegPoints)
+							for(int k = -3; k < 4; k++) {
+								temp.x = (int) (po.x * xScale) + k;
+								for(int l = -3; l < 4; l++) {
+									temp.y = (int) (po.y * yScale) + l;
+									if(p.equals(temp))
+										if(b.compareAndSet(false, true)) {
+											JOptionPane.showMessageDialog(g, "Successfully switched paths!",
+													"Path Switcher", JOptionPane.INFORMATION_MESSAGE);
+											System.out.println("Path switch successful");
+											Path swap = currentPath;
+											currentPath = paths.get(key);
+											paths.put(key, swap);
+											redoBuffer.clear();
+											shift = false;
+											return;
+										} else return;
 								}
+							}
 					}).start());
 				}
 			} else
@@ -1192,7 +1048,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 				//searching through extra paths
 				if(!findClickedPoint(currentPath, p)) {
 					System.out.println(moveFlag[0]);
-					for(Map.Entry<String, BetterArrayList<PathSegment>> en : paths.entrySet())
+					for(Map.Entry<String, Path> en : paths.entrySet())
 						if(findClickedPoint(en.getValue(), p))
 							break;
 				}
@@ -1210,73 +1066,36 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 		 * @param p    the cursor point
 		 * @return false if it can't find a corresponding point, true otherwise
 		 */
-		private boolean findClickedPoint(BetterArrayList<PathSegment> path, java.awt.Point p) {
+		private boolean findClickedPoint(Path path, java.awt.Point p) {
 			java.awt.Point temp = new java.awt.Point();
-			for(PathSegment ps : path) {
-				for(Waypoint po : ps.clickPoints) {
-					for(int k = -3; k < 4; k++) {
-						temp.x = (int) (po.x * xScale) + k;
-						for(int l = -3; l < 4; l++) {
-							temp.y = (int) (po.y * yScale) + l;
-							if(p.equals(temp)) {
-								JOptionPane.showMessageDialog(g, "You cannot move this point!", "Point Mover", JOptionPane.ERROR_MESSAGE);
-								moveFlag = new Object[]{-2, -2, -2};
-								return true;
-							}
+			for(Waypoint po : path.clickPoints)
+				for(int k = -3; k < 4; k++) {
+					temp.x = (int) (po.x * xScale) + k;
+					for(int l = -3; l < 4; l++) {
+						temp.y = (int) (po.y * yScale) + l;
+						if(p.equals(temp)) {
+							JOptionPane.showMessageDialog(g, "You cannot move this point!", "Point Mover", JOptionPane.ERROR_MESSAGE);
+							moveFlag = new Object[]{-2, -2, -2};
+							return true;
 						}
 					}
 				}
-			}
 			return false;
 		}
 
 		/**
-		 * This function simulates a clicked point. It checks if the current path is empty and adds a non-drawn PathSegment if it is.
-		 * Then it adds the new point to the end of the current PathSegment. Finally it generates a new path accordingly.
+		 * This function simulates a clicked point. It checks if the current path is empty and adds a non-drawn Path if it is.
+		 * Then it adds the new point to the end of the current Path. Finally it generates a new path accordingly.
 		 *
 		 * @param x the x position of the point in feet
 		 * @param y the y position of the point in feet
 		 */
 		private void simClick(double x, double y) {
-			if(currentPath.isEmpty()) currentPath.add(new PathSegment());
 			double[] vals = getWayKinVals();
 			if(vals != null && vals.length == 3) {
-				currentPath.getLast().clickPoints.add(new Waypoint(x, y, vals[0], vals[1], vals[2]));
-				genPath(currentPath.getLast());
+				currentPath.clickPoints.add(new Waypoint(x, y, vals[0], vals[1], vals[2]));
+				genPath(currentPath);
 			}
-		}
-
-		/**
-		 * This function handles a whole bunch of edge cases and the smoothing when going from clicked to drawn or drawn to clicked. It simulates
-		 * a "drawClick" which is the click when you go from drawn to clicked mode.
-		 *
-		 * @param x the x position of the point in feet
-		 * @param y the y position of the point in feet
-		 */
-		private void simDrawClick(double x, double y) {
-			if(!currentPath.isEmpty() && currentPath.getLast().pathSegPoints.isEmpty()) currentPath.removeLast();
-			currentPath.add(new PathSegment());
-			if(currentPath.size() > 1 && !currentPath.get2ndLast().pathSegPoints.isEmpty())
-				if(currentPath.getLast().clickPoints.isEmpty() && currentPath.getLast().pathSegPoints.isEmpty()) {
-//						System.out.println("normal click sorta");
-					//Removes the unnecessary empty path segment and adds a clicked point to the previous
-					currentPath.removeLast();
-					simClick(x, y);
-				} else {
-					double[] vals = getWayKinVals();
-					if(vals != null && vals.length == 3) {
-						currentPath.get2ndLast().clickPoints.add(new Waypoint(x, y, vals[0], vals[1], vals[2]));
-						pathGen = new MPGen2D(convertPointArray(currentPath.get2ndLast().clickPoints));
-						//Generates the left and right paths for the center path.
-						BetterArrayList<Waypoint> temp = convert2DArray(pathGen);
-						BetterArrayList<BetterArrayList<Waypoint>> lAndR = leftRight(temp, robotTrkWidth);
-						currentPath.getLast().pathSegPoints = temp;
-						currentPath.getLast().leftPSPoints = lAndR.get(0);
-						currentPath.getLast().rightPSPoints = lAndR.get(1);
-					}
-				}
-			else if(currentPath.size() == 1 && currentPath.getLast().clickPoints.isEmpty() && currentPath.getLast().pathSegPoints.isEmpty())
-				simClick(x, y);
 		}
 
 		/**
@@ -1288,17 +1107,12 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 			//Get the mouse position (x, y) on the window, constrain it to the field borders and convert it to feet.
 			double[] point;
 			if((point = getCursorFeet(g.getRootPane().getMousePosition())) != null) {
-				//Validate points
-				if(pm == PrevMode.UNDO || pm == PrevMode.REDO)
-					simDrawClick(point[0], point[1]);
-				else simClick(point[0], point[1]);
-				pm = PrevMode.CLICK;
+				simClick(point[0], point[1]);
 				fig.repaint();
 				//Every time a new point is added, clear the redo buffer, set the firstTime boolean to true because when undo or redo is
 				//called it will be the first time it has been called for this path with a new point, and update the previous draw state
 				redoBuffer.clear();
-				firstUndoRedo = true;
-				System.out.println(pm + " " + point[0] + " " + point[1]);
+				System.out.println(point[0] + " " + point[1]);
 			} else
 				JOptionPane.showMessageDialog(g, "Please move your cursor back into the window!", "Boundary Monitor",
 						JOptionPane.ERROR_MESSAGE);

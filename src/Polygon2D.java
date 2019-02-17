@@ -8,7 +8,6 @@ import java.util.stream.IntStream;
  */
 public class Polygon2D implements Shape, Cloneable, Serializable {
 	private static final long serialVersionUID = 1L;
-	String name = "";
 	/**
 	 * The total number of points.  The value of <code>npoints</code>
 	 * represents the number of valid points in this <code>Polygon</code>.
@@ -48,17 +47,9 @@ public class Polygon2D implements Shape, Cloneable, Serializable {
 	 * @param xpoints an array of <i>x</i> coordinates
 	 * @param ypoints an array of <i>y</i> coordinates
 	 * @param npoints the total number of points in the <code>Polygon2D</code>
-	 * @throws NegativeArraySizeException if the value of
-	 *                                    <code>npoints</code> is negative.
-	 * @throws IndexOutOfBoundsException  if <code>npoints</code> is
-	 *                                    greater than the length of <code>xpoints</code>
-	 *                                    or the length of <code>ypoints</code>.
-	 * @throws NullPointerException       if <code>xpoints</code> or
-	 *                                    <code>ypoints</code> is <code>null</code>.
 	 */
-	Polygon2D(double[] xpoints, double[] ypoints, int npoints, String name) {
+	Polygon2D(double[] xpoints, double[] ypoints, int npoints) {
 		assert npoints <= xpoints.length && npoints <= ypoints.length : "npoints > xpoints.length || npoints > ypoints.length";
-		this.name = name;
 		this.npoints = npoints;
 		this.xpoints = new double[npoints];
 		this.ypoints = new double[npoints];
@@ -136,9 +127,9 @@ public class Polygon2D implements Shape, Cloneable, Serializable {
 	}
 
 	/**
-	 * Returns the high precision bounding box of the {@link Shape}.
+	 * Returns the high precision bounding box of the Shape.
 	 *
-	 * @return a {@link Rectangle2D} that precisely
+	 * @return a Rectangle2D
 	 * bounds the <code>Shape</code>.
 	 */
 	public Rectangle2D getBounds2D() {
@@ -152,7 +143,7 @@ public class Polygon2D implements Shape, Cloneable, Serializable {
 	/**
 	 * Determines if the specified coordinates are inside this
 	 * <code>Polygon</code>.  For the definition of
-	 * <i>insideness</i>, see the class comments of {@link Shape}.
+	 * <i>insideness</i>, see the class comments of Shape.
 	 *
 	 * @param x the specified x coordinate
 	 * @param y the specified y coordinate
@@ -176,7 +167,7 @@ public class Polygon2D implements Shape, Cloneable, Serializable {
 	}
 
 	/**
-	 * Tests if a specified {@link Point2D} is inside the boundary of this
+	 * Tests if a specified Point2D is inside the boundary of this
 	 * <code>Polygon</code>.
 	 *
 	 * @param p a specified <code>Point2D</code>
@@ -209,53 +200,6 @@ public class Polygon2D implements Shape, Cloneable, Serializable {
 		if(npoints <= 0 || !bounds.intersects(x, y, w, h)) return false;
 		updateComputingPath();
 		return closedPath.intersects(x, y, w, h);
-	}
-
-	/**
-	 * Checks if the last element in the array is the same as the first element.
-	 * Used for creating all point-to-point lines for a polygon.
-	 *
-	 * @param d the array to check
-	 * @return the inputted array if its closed, otherwise a new array which is closed
-	 */
-	private double[] checkIfClosed(double[] d) {
-		if(d[0] == d[d.length - 1]) return d;
-		else {
-			double[] temp = new double[d.length + 1];
-			System.arraycopy(d, 0, temp, 0, d.length);
-			temp[temp.length - 1] = temp[0];
-			return temp;
-		}
-	}
-
-
-	/**
-	 * Checks if the line made by the 2 input points intersect with any of the lines made by the points of this polygon
-	 *
-	 * @param x the x-coordinate of the current point
-	 * @param y the y-coordinate of the current point
-	 * @param p the next point, to create a line to
-	 * @return <code>true</code> if the lines intersect <code>false</code> otherwise.
-	 */
-	boolean intersects(double x, double y, PathGUITool.Waypoint p) {
-		if(p != null) {
-			double[] xs = checkIfClosed(xpoints), ys = checkIfClosed(ypoints);
-			Line2D line = new Line2D.Double(x, y, p.x, p.y);
-			return IntStream.range(0, xs.length - 2).mapToObj(i -> new Line2D.Double(xs[i], ys[i], xs[i + 1], ys[i + 1])).
-					anyMatch(line::intersectsLine);
-		}
-		return false;
-	}
-
-	/**
-	 * Checks if a point is on the border or outside this polygon
-	 *
-	 * @param x the x-coordinate of the current point
-	 * @param y the y-coordinate of the current point
-	 * @return <code>true</code> if the lines intersect <code>false</code> otherwise.
-	 */
-	boolean out(double x, double y) {
-		return x <= this.bounds.getX() || x >= this.bounds.getMaxX() || y <= this.bounds.getY() || y >= this.bounds.getMaxY();
 	}
 
 	/**
@@ -310,13 +254,13 @@ public class Polygon2D implements Shape, Cloneable, Serializable {
 	 * Returns an iterator object that iterates along the boundary of this
 	 * <code>Polygon</code> and provides access to the geometry
 	 * of the outline of this <code>Polygon</code>.  An optional
-	 * {@link AffineTransform} can be specified so that the coordinates
+	 * AffineTransform can be specified so that the coordinates
 	 * returned in the iteration are transformed accordingly.
 	 *
 	 * @param at an optional <code>AffineTransform</code> to be applied to the
 	 *           coordinates as they are returned in the iteration, or
 	 *           <code>null</code> if untransformed coordinates are desired
-	 * @return a {@link PathIterator} object that provides access to the
+	 * @return a PathIterator object that provides access to the
 	 * geometry of this <code>Polygon</code>.
 	 */
 	public PathIterator getPathIterator(AffineTransform at) {

@@ -1,6 +1,5 @@
 import java.awt.*;
 import java.awt.geom.Line2D;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.IntStream;
@@ -14,7 +13,6 @@ import java.util.stream.IntStream;
  * the y-values in the 2nd columns. All the 2D arrays are converted to new Polygon2D's which are then drawn.
  */
 class FieldGenerator {
-	ArrayList<Polygon2D> invalidAreas = new ArrayList<>();
 	private LinkedHashMap<String, double[][]> elements = new LinkedHashMap<>();
 
 	private double[][] fieldBorder = new double[][]{
@@ -152,33 +150,6 @@ class FieldGenerator {
 	};
 	//Add all the elements to their respective data structures on object creation.
 	{
-		LinkedHashMap<String, double[][]> invAreas = new LinkedHashMap<>();
-		invAreas.put("field border", fieldBorder);
-		invAreas.put("right switch frame", flipOverXAndY(leftSwitchFrame));
-		invAreas.put("scale", scaleMid);
-		invAreas.put("blue top portal", blueTopPortal);
-		invAreas.put("blue bot portal", flipOverXAxis(blueTopPortal));
-		invAreas.put("red bot portal", redBotPortal);
-		invAreas.put("red top portal", flipOverXAxis(redBotPortal));
-		invAreas.put("left switch frame", leftSwitchFrame);
-		invAreas.put("top left power cube", topLeftPC);
-		invAreas.put("top right power cube", flipOverXAndY(topLeftPC));
-		invAreas.put("bottom left power cube", flipOverXAxis(topLeftPC));
-		invAreas.put("bottom right power cube", flipOverXAxis(flipOverXAndY(topLeftPC)));
-		invAreas.put("second top left power cube", secondTopLeftPC);
-		invAreas.put("second top right power cube", flipOverXAndY(secondTopLeftPC));
-		invAreas.put("second bottom left power cube", flipOverXAxis(secondTopLeftPC));
-		invAreas.put("second bottom right power cube", flipOverXAxis(flipOverXAndY(secondTopLeftPC)));
-
-		invAreas.forEach((key, value) -> {
-			double[] xPoints = new double[value.length], yPoints = new double[value.length];
-			IntStream.range(0, value.length).forEach(i -> {
-				xPoints[i] = value[i][0];
-				yPoints[i] = value[i][1];
-			});
-			invalidAreas.add(new Polygon2D(xPoints, yPoints, xPoints.length, key));
-		});
-
 		elements.put("leftAutoLine0", leftAutoLine);
 		elements.put("rightAutoLine0", flipOverXAndY(leftAutoLine));
 		elements.put("nullLineTop0", nullTop);
@@ -284,7 +255,7 @@ class FieldGenerator {
 					xPoints[i] = 30 + xScale * entry.getValue()[i][0];
 					yPoints[i] = h - 30 - yScale * entry.getValue()[i][1];
 				});
-				Polygon2D p = new Polygon2D(xPoints, yPoints, xPoints.length, entry.getKey());
+				Polygon2D p = new Polygon2D(xPoints, yPoints, xPoints.length);
 				if(key.contains("blue"))
 					if(key.contains("Inner"))
 						g2.setPaint(new Color(33, 63, 153));
