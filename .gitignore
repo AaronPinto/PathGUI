@@ -1,0 +1,19 @@
+*.class
+src/**/*.json
+*.jks
+*.p12
+*.properties
+*.iml
+
+.gradle/
+build/
+node_modules/
+out/
+A&W/
+target/
+
+# Package Files
+*.jar
+*.war
+*.ear
+*.zip
