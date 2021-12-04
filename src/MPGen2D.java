@@ -80,8 +80,10 @@ public class MPGen2D {
      */
     private static List<ArrayList<Double>> quinticPolynomialsPlanner(double s_x, double s_y, double s_yaw, double s_v, double s_a,
             double g_x, double g_y, double g_yaw, double g_v, double g_a) {
+        // Setup x and y components of magnitudes
         double s_vx = s_v * Math.cos(s_yaw), s_vy = s_v * Math.sin(s_yaw), g_vx = g_v * Math.cos(g_yaw), g_vy = g_v * Math.sin(g_yaw);
         double s_ax = s_a * Math.cos(s_yaw), s_ay = s_a * Math.sin(s_yaw), g_ax = g_a * Math.cos(g_yaw), g_ay = g_a * Math.sin(g_yaw);
+
         ArrayList<Double> time = new ArrayList<>(), rx = new ArrayList<>(), ry = new ArrayList<>(), r_yaw = new ArrayList<>(), rv =
                 new ArrayList<>(), ra = new ArrayList<>(), rj = new ArrayList<>();
 

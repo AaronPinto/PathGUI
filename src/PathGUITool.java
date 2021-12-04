@@ -56,7 +56,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
     private boolean shift = false;
     // An object array to store the index values necessary to locate a movable point in paths
     // moveFlag[0] is the path name, moveFlag[1] is the Point index
-    private Object[] moveFlag = new Object[]{-1, -1};
+    private Object[] moveFlag = new Object[]{0, 0};
 
     /**
      * Constructor.
@@ -871,17 +871,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
      * Handles the motion and position of the mouse and runs different functions accordingly.
      */
     class MouseListener extends MouseAdapter {
-        // A custom cursor for letting the user know that their cursor is over an invalid position.
-        final Cursor invalid_cursor;
-
-        {
-            // Initialize the cursor. Checks if the included image is in the correct file location, and if it is it creates the cursor at
-            // the center of the actual image excluding the background.
-            invalid_cursor = Toolkit.getDefaultToolkit()
-                    .createCustomCursor(Toolkit.getDefaultToolkit().getImage(getClass().getResource("/cursor.png")),
-                            new java.awt.Point(7, 7), "invalid");
-        }
-
         /**
          * This function overrides the function in the superclass and is called whenever Java detects the mouse has been dragged. A drag
          * consists of a mouse button being held down and the mouse being moved simultaneously. If you've clicked on a valid point to move,
@@ -906,9 +895,13 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
                         if (moveFlag[0].equals("current")) {
                             currentPath.clickPoints.get(mf1).x = point[0];
                             currentPath.clickPoints.get(mf1).y = point[1];
+
+                            genPath(currentPath);
                         } else {
                             paths.get(moveFlag[0].toString()).clickPoints.get(mf1).x = point[0];
                             paths.get(moveFlag[0].toString()).clickPoints.get(mf1).y = point[1];
+
+                            genPath(paths.get(moveFlag[0].toString()));
                         }
 
                         fig.repaint();
@@ -918,88 +911,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
                     }
                 }
             }
-        }
-
-        /**
-         * This functions overrides the function in the superclass and is called whenever the mouse is moved. First, we check if the mouse
-         * cursor is in the JFrame/window and if it is we constrain it to the field border and keep the values in pixels, and we take
-         * another snapshot of the mouse position and then check if that is within the window. If it is, we shift it to the actual position
-         * of the cursor relative to the field and keep it as pixels. This is the actual, unconstrained position of the cursor. We then feed
-         * those cursor values into the findPoint() function and if it doesn't find a point, within a 7x7 range of the cursor with the
-         * cursor in the center, in the current path and the cursor is not in an invalid field element, if paths is empty it sets the cursor
-         * to the default cursor. Otherwise, it searches through paths for the exact same thing as it does with currentPath. If it still
-         * can't find a point, then it sets the cursor to the default arrow cursor. If the function finds a movable point, it sets the
-         * cursor to a hand cursor. If the function finds a point that cannot be moved or the cursor position is invalid, it changes the
-         * cursor to the custom invalid cursor.
-         *
-         * @param e the (unused) MouseEvent that is generated whenever the mouse is moved.
-         */
-        @Override
-        public void mouseMoved(MouseEvent e) {
-            int[] point;
-
-            if ((point = getCursorPixels(g.getRootPane().getMousePosition())) != null) {
-                java.awt.Point p = g.getRootPane().getMousePosition();
-
-                if (p != null) {
-                    p.x = p.x - 30;
-                    p.y = (height - 30 + g.getJMenuBar().getHeight()) - p.y;
-
-                    if (!findPoint(currentPath, point[0], point[1])) {
-                        if (paths.isEmpty()) {
-                            g.setCursor(Cursor.getDefaultCursor());
-                        }
-
-                        for (Map.Entry<String, Path> en : paths.entrySet()) {
-                            if (findPoint(en.getValue(), point[0], point[1])) {
-                                return;
-                            }
-                        }
-
-                        g.setCursor(Cursor.getDefaultCursor());
-                    }
-                }
-            }
-        }
-
-        /**
-         * This function does the actual searching for a point through the specified path. The aim of this function is to modify the cursor
-         * based upon what its close to (in terms of a clicked point) or in (in terms of an invalid field area). First, it searches through
-         * all the clicked points in non-drawn path segments in a path, and if the cursor is within a 7x7 area, with the clicked point in
-         * the middle, of a movable clicked point, it changes the cursor to a hand and returns true, otherwise if the point is not movable,
-         * it changes the cursor to the custom invalid one and returns true. If the cursor is not near a clicked point in that path, it then
-         * checks if the cursor is inside an invalid field area, other than the field border. If it is, then it sets the cursor to the
-         * invalid one and returns true. Regarding the field border, it checks if the path is empty and if it is then it continues to the
-         * next field element, otherwise it checks if the actual position of the cursor is outside the field border. If it is then it sets
-         * the cursor to the invalid one and returns true. The reason why it checks if the path is empty is to make it easier for the user
-         * to start a path along the field border. Because the first Point is automatically constrained to inside the field, you don't need
-         * to display an unwieldy cursor that does not tell you, precisely, where the point will be created if you click.
-         *
-         * @param path the path to search through
-         * @param x    the x value of the constrained cursor position
-         * @param y    the y value of the constrained cursor position
-         *
-         * @return false if the cursor is not near a clicked point in that path or in any invalid area, true otherwise
-         */
-        private boolean findPoint(Path path, int x, int y) {
-            int tx, ty;
-
-            for (Waypoint po : path.clickPoints) {
-                for (int k = -3; k < 4; k++) {
-                    tx = (int) (po.x * xScale) + k;
-
-                    for (int l = -3; l < 4; l++) {
-                        ty = (int) (po.y * yScale) + l;
-
-                        if (x == tx && y == ty) {
-                            g.setCursor(invalid_cursor);
-                            return true;
-                        }
-                    }
-                }
-            }
-
-            return false;
         }
 
         /**
@@ -1078,7 +989,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
                 java.awt.Point p = new java.awt.Point(point[0], point[1]);
                 moveFlag = new Object[]{"current", -1};
 
-                // Check the current path to see if the clicked point is a part of it and if it isn't then check all the other paths
+                // Check the current path to see if the clicked point is a part of it, and if it isn't, then check all the other paths.
                 // Only check the other paths if you can't find it in the current one to save time and resources instead of needlessly
                 // searching through extra paths
                 if (!findClickedPoint(currentPath, p)) {
@@ -1109,7 +1020,9 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
         private boolean findClickedPoint(Path path, java.awt.Point p) {
             java.awt.Point temp = new java.awt.Point();
 
-            for (Waypoint po : path.clickPoints) {
+            for (int i = 0; i < path.clickPoints.size(); i++) {
+                Waypoint po = path.clickPoints.get(i);
+
                 for (int k = -3; k < 4; k++) {
                     temp.x = (int) (po.x * xScale) + k;
 
@@ -1117,9 +1030,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
                         temp.y = (int) (po.y * yScale) + l;
 
                         if (p.equals(temp)) {
-                            JOptionPane.showMessageDialog(g, "You cannot move this point!", "Point Mover", JOptionPane.ERROR_MESSAGE);
-
-                            moveFlag = new Object[]{-2, -2};
+                            moveFlag = new Object[]{"current", i};
 
                             return true;
                         }
