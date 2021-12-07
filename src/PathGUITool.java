@@ -6,16 +6,16 @@ import java.awt.datatransfer.ClipboardOwner;
 import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Transferable;
 import java.awt.event.*;
-import java.awt.geom.Ellipse2D;
 import java.awt.geom.Line2D;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.text.DecimalFormat;
-import java.util.*;
+import java.util.Calendar;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Scanner;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
 
 /**
  * The program takes the mouse position on the field drawn in the GUI and then based off of that, when the mouse button is clicked, it
@@ -37,8 +37,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
     private final JFrame g = new JFrame("Path GUI Tool");
     // LinkedHashMap to store the name and path for all previous paths
     private final LinkedHashMap<String, Path> paths = new LinkedHashMap<>();
-    // Field generator object that contains all the necessary shapes for the field drawing
-    private final FieldGenerator fg = new FieldGenerator();
     // Path for storing the Ctrl + Z'd points
     private final Path redoBuffer = new Path();
 
@@ -56,7 +54,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
     private boolean shift = false;
     // An object array to store the index values necessary to locate a movable point in paths
     // moveFlag[0] is the path name, moveFlag[1] is the Point index
-    private Object[] moveFlag = new Object[]{0, 0};
+    private Object[] moveFlag = new Object[]{"", -1};
 
     /**
      * Constructor.
@@ -129,44 +127,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
     }
 
     /**
-     * A simple function that constrains a value from the specified min bound to the specified max bound
-     *
-     * @param value        The value to constrain
-     * @param minConstrain The minimum bound (in the same units as the value)
-     * @param maxConstrain The maximum bound (in the same units as the value)
-     *
-     * @return the constrained value
-     */
-    private static double constrainTo(double value, double minConstrain, double maxConstrain) {
-        return Math.max(minConstrain, Math.min(maxConstrain, value));
-    }
-
-    private static BetterArrayList<Waypoint> convert2DArray(MPGen2D pathGen) {
-        BetterArrayList<Waypoint> temp = new BetterArrayList<>();
-        ArrayList<ArrayList<Double>> results = pathGen.results;
-
-        for (int i = 0; i < results.get(0).size(); i++) {
-            temp.add(new Waypoint(results.get(1).get(i), results.get(2).get(i), results.get(3).get(i), results.get(4).get(i),
-                    results.get(5).get(i)));
-        }
-
-        return temp;
-    }
-
-    /**
-     * A function that takes a BetterArrayList as an argument, and performs a deep copy of tall the values A deep copy means that an object
-     * is copied along with all the object to which it refers. In this case, all the values of the objects that the BetterArrayList refer to
-     * are copied into a new double array, which is then returned.
-     *
-     * @param p the BetterArrayList to convert to a 2d double array
-     *
-     * @return a 2d double array containing all the points from the BetterArrayList
-     */
-    private static Waypoint[] convertPointArray(BetterArrayList<Waypoint> p) {
-        return p.stream().map(Waypoint::new).toArray(Waypoint[]::new);
-    }
-
-    /**
      * This function saves the points in each path to a file in proper Java 2D array syntax. It checks if any paths are not empty and if so,
      * it saves those points to a file, otherwise it lets the user know that they cannot save nothing.
      */
@@ -185,7 +145,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
                     }
 
                     FileWriter fw = new FileWriter(jfc.getSelectedFile().getAbsolutePath());
-                    fw.write(output2DArray());
+                    fw.write(Utils.output2DArray(currentPath, paths));
                     fw.flush();
                     fw.close();
 
@@ -247,7 +207,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
      */
     private void copy() {
         Clipboard c = Toolkit.getDefaultToolkit().getSystemClipboard();
-        c.setContents(new StringSelection(output2DArray()), fig);
+        c.setContents(new StringSelection(Utils.output2DArray(currentPath, paths)), fig);
 
         JOptionPane.showConfirmDialog(g, "Waypoints copied to clipboard!", "Points Copier", JOptionPane.DEFAULT_OPTION);
     }
@@ -373,8 +333,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 
         // Draw ticks (the light gray grid lines and the numbers)
         double yMax = 27.0, xMax = 54.0;
-        drawYTickRange(g2, yaxis, yMax);
-        drawXTickRange(g2, xaxis, yaxis.getY1(), yaxis.getY2(), xMax);
+        GraphicsUtils.drawYTickRange(this, g2, yaxis, yMax);
+        GraphicsUtils.drawXTickRange(this, g2, xaxis, yaxis.getY1(), yaxis.getY2(), xMax, height);
 
         // Draw the field and everything on it
         rectWidth = (xaxis.getX2() - xaxis.getX1());
@@ -383,7 +343,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
         yScale = rectHeight / yMax;
         ppiX = 1.0 / 12.0 * xScale;
         ppiY = 1.0 / 12.0 * yScale;
-        fg.plotField(g2, height, xScale, yScale);
+        FieldGenerator.plotField(g2, height, xScale, yScale);
         g2.setColor(Color.black);
 
         Rectangle rect = new Rectangle((int) yaxis.getX1(), (int) yaxis.getY1(), (int) rectWidth, (int) rectHeight);
@@ -394,282 +354,12 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
         g2.fillRect(rect.x + rect.width + 1, rect.y, (int) width - rect.width - 30, rect.height + 1);
 
         // Plot data
-        plot(g2);
-    }
-
-    /**
-     * This is the function that plots everything in a path, so clickPoints (if applicable), pathSegPoints, leftPoints, and rightPoints. It
-     * draws a circle of radius 2 pixels around each non-clicked point and a circle of radius 3 around each clicked point. This is why a
-     * path may appear to be crossing a field element, when in reality it is not because the edge of the robot ends at the value of the
-     * point. This function also draws a line between each point to show that they are all connected in the same path.
-     *
-     * @param g2   the 2D graphics object used to draw everything
-     * @param path the path to draw/plot
-     */
-    private void plotPath(Graphics2D g2, Path path) {
-        System.out.println("Path point list sizes: " + path.pathSegPoints.size() + " " + path.clickPoints.size());
-        // Draw clicked points
-        if (path.clickPoints.size() > 1) {
-            for (int j = 0; j < path.clickPoints.size() - 1; j++) {
-                double x1 = 30 + xScale * path.clickPoints.get(j).x, y1 = height - 30 - yScale * path.clickPoints.get(j).y;
-                double x2 = 30 + xScale * path.clickPoints.get(j + 1).x, y2 = height - 30 - yScale * path.clickPoints.get(j + 1).y;
-
-                g2.setPaint(Color.magenta);
-                g2.draw(new Line2D.Double(x1, y1, x2, y2));
-                g2.fill(new Ellipse2D.Double(x1 - 3, y1 - 3, 6, 6));
-                g2.fill(new Ellipse2D.Double(x2 - 3, y2 - 3, 6, 6));
-            }
-        } else if (path.clickPoints.size() == 1) {
-            double x1 = 30 + xScale * path.clickPoints.get(0).x, y1 = height - 30 - yScale * path.clickPoints.get(0).y;
-
-            g2.setPaint(Color.magenta);
-            g2.fill(new Ellipse2D.Double(x1 - 3, y1 - 3, 6, 6));
-        }
-
-        // Draw all the pathSegPoints, leftPoints and rightPoints
-        if (path.pathSegPoints.size() > 1) {
-            for (int j = 0; j < path.pathSegPoints.size() - 1; j++) {
-                double x1 = 30 + xScale * path.pathSegPoints.get(j).x, y1 = height - 30 - yScale * path.pathSegPoints.get(j).y;
-                double x2 = 30 + xScale * path.pathSegPoints.get(j + 1).x, y2 = height - 30 - yScale * path.pathSegPoints.get(j + 1).y;
-
-                g2.setPaint(Color.green);
-                g2.draw(new Line2D.Double(x1, y1, x2, y2));
-                g2.fill(new Ellipse2D.Double(x1 - 2, y1 - 2, 4, 4));
-                g2.fill(new Ellipse2D.Double(x2 - 2, y2 - 2, 4, 4));
-
-                if (!path.leftPSPoints.isEmpty() && j < path.leftPSPoints.size() - 1) {
-                    double lx1 = 30 + xScale * path.leftPSPoints.get(j).x, ly1 = height - 30 - yScale * path.leftPSPoints.get(j).y;
-                    double lx2 = 30 + xScale * path.leftPSPoints.get(j + 1).x, ly2 = height - 30 - yScale * path.leftPSPoints.get(j + 1).y;
-                    double rx1 = 30 + xScale * path.rightPSPoints.get(j).x, ry1 = height - 30 - yScale * path.rightPSPoints.get(j).y;
-                    double rx2 = 30 + xScale * path.rightPSPoints.get(j + 1).x, ry2 =
-                            height - 30 - yScale * path.rightPSPoints.get(j + 1).y;
-
-                    g2.setPaint(Color.gray);
-                    g2.draw(new Line2D.Double(lx1, ly1, lx2, ly2));
-                    g2.fill(new Ellipse2D.Double(lx1 - 2, ly1 - 2, 4, 4));
-                    g2.fill(new Ellipse2D.Double(lx2 - 2, ly2 - 2, 4, 4));
-
-                    g2.setPaint(Color.lightGray);
-                    g2.draw(new Line2D.Double(rx1, ry1, rx2, ry2));
-                    g2.fill(new Ellipse2D.Double(rx1 - 2, ry1 - 2, 4, 4));
-                    g2.fill(new Ellipse2D.Double(rx2 - 2, ry2 - 2, 4, 4));
-                }
-            }
-        } else if (path.pathSegPoints.size() == 1) {
-            double x1 = 30 + xScale * path.pathSegPoints.get(0).x, y1 = height - 30 - yScale * path.pathSegPoints.get(0).y;
-
-            g2.setPaint(Color.green);
-            g2.fill(new Ellipse2D.Double(x1 - 2, y1 - 2, 4, 4));
-        }
-    }
-
-    /**
-     * This function plots all the paths in the current user session. It stores the last color of the Graphics object and then resets the
-     * Graphics object to that color after.
-     *
-     * @param g2 the 2D graphics object used to draw everything
-     */
-    private void plot(Graphics2D g2) {
-        Color tempC = g2.getColor();
-
-        // Plot the current path then loop through paths and plot each
-        plotPath(g2, currentPath);
-        paths.forEach((key, value) -> plotPath(g2, value));
-        g2.setColor(tempC);
-    }
-
-    /**
-     * Just so you don't get confused, this function draws the numbers and ticks along the y-axis and the horizontal light gray lines.
-     * <a href="http://www.purplemath.com/modules/distform.htm">Distance Formula</a>
-     *
-     * @param g2    The Graphics2D object for this window
-     * @param yaxis The line that represents the y-axis
-     * @param Max   The width of the field in feet
-     */
-    private void drawYTickRange(Graphics2D g2, Line2D yaxis, double Max) {
-        double upperY_tic = Math.ceil(Max);
-
-        // The starting and ending x and y values for the y-axis
-        double x0 = yaxis.getX1();
-        double y0 = yaxis.getY1();
-        double xf = yaxis.getX2();
-        double yf = yaxis.getY2();
-
-        // Calculate step-size between ticks and length of Y axis using distance formula
-        // Total distance of the axis / number of ticks = distance per tick
-        double distance = Math.sqrt(Math.pow((xf - x0), 2) + Math.pow((yf - y0), 2)) / upperY_tic;
-
-        double upper = upperY_tic;
-        // Iterates through each number from 0 to the max length of the y-axis in feet and draws the horizontal grid
-        // lines for each iteration except the last one
-        for (int i = 0; i <= upperY_tic; i++) {
-            double newY = y0;
-            // calculate width of number for proper drawing
-            String number = new DecimalFormat("#.#").format(upper);
-            FontMetrics fm = getFontMetrics(getFont());
-            int width = fm.stringWidth(number);
-
-            // Draws a tick line and the corresponding number at that value in black
-            g2.draw(new Line2D.Double(x0, newY, x0 - 10, newY));
-            g2.drawString(number, (float) x0 - 15 - width, (float) newY + 5);
-
-            // add grid lines to chart
-            if (i != upperY_tic) {
-                Stroke tempS = g2.getStroke();
-                Color tempC = g2.getColor();
-
-                // Sets the color and stroke to light gray dashes and draws them all the way across the JPanel
-                g2.setColor(Color.lightGray);
-                g2.setStroke(new BasicStroke(1f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1f, new float[]{5f}, 0f));
-                g2.draw(new Line2D.Double(30, newY, getWidth(), newY));
-
-                g2.setColor(tempC);
-                g2.setStroke(tempS);
-            }
-            // Increment the number to draw and the position of the tick
-            upper -= 1;
-            y0 = newY + distance;
-        }
-    }
-
-    /**
-     * Just so you don't get confused, this function draws the numbers and ticks along the x-axis and the vertical light gray lines.
-     * <a href="http://www.purplemath.com/modules/distform.htm">Distance Formula</a>
-     *
-     * @param g2    The Graphics2D object for this window
-     * @param xaxis The line that represents the x-axis
-     * @param Max   The width of the field in feet
-     */
-    private void drawXTickRange(Graphics2D g2, Line2D xaxis, double yTickYMax, double yTickYMin, double Max) {
-        double upperX_tic = Math.ceil(Max);
-
-        // The starting and ending x and y values for the x-axis
-        double x0 = xaxis.getX1();
-        double y0 = xaxis.getY1();
-        double xf = xaxis.getX2();
-        double yf = xaxis.getY2();
-
-        // calculate step-size between ticks and length of Y axis using distance formula
-        // Total distance of the axis / number of ticks = distance per tick
-        double distance = Math.sqrt(Math.pow((xf - x0), 2) + Math.pow((yf - y0), 2)) / upperX_tic;
-
-        double lower = 0;
-        // Iterates through each number from 0 to the max length of the x-axis in feet and draws the horizontal grid
-        // lines for each iteration except the last one
-        for (int i = 0; i <= upperX_tic; i++) {
-            double newX = x0;
-            // calculate width of number for proper drawing
-            String number = new DecimalFormat("#.#").format(lower);
-            FontMetrics fm = getFontMetrics(getFont());
-            int width = fm.stringWidth(number);
-
-            // Draws a tick line and the corresponding number at that value in black
-            g2.draw(new Line2D.Double(newX, yf, newX, yf + 10));
-            g2.drawString(number, (float) (newX - (width / 2.0)), (float) yf + 25);
-
-            // add grid lines to chart
-            if (i != 0) {
-                Stroke tempS = g2.getStroke();
-                Color tempC = g2.getColor();
-
-                // Sets the color and stroke to light gray dashes and draws them all the way down to the x-axis
-                g2.setColor(Color.lightGray);
-                g2.setStroke(new BasicStroke(1f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1f, new float[]{5f}, 0f));
-                g2.draw(new Line2D.Double(newX, yTickYMax, newX, height - (height - yTickYMin)));
-
-                g2.setColor(tempC);
-                g2.setStroke(tempS);
-            }
-            // Increment the number to draw and the position of the tick
-            lower += 1;
-            x0 = newX + distance;
-        }
+        GraphicsUtils.plot(g2, currentPath, paths, xScale, yScale, height);
     }
 
     @Override
     public void lostOwnership(Clipboard clip, Transferable transferable) {
         // We must keep the object we placed on the system clipboard until this method is called.
-    }
-
-    /**
-     * This function formats and appends all the values in all the paths into proper 2D array syntax and then returns that String.
-     *
-     * @return a String that contains all the values for all the paths
-     */
-    private String output2DArray() {
-        StringBuilder output = new StringBuilder();
-        output.append("public static Object[][] currentPath = new Object[][]{\n");
-
-        outputPath(output, currentPath);
-
-        paths.forEach((key, value) -> {
-            output.append(String.format("public static Object[][] %s = new Object[][]{\n", key));
-            outputPath(output, value);
-        });
-
-        System.out.println("2D Array output: " + output);
-        return output.toString();
-    }
-
-    /**
-     * This function does the actual formatting and appending for all the values in a path to a StringBuilder
-     *
-     * @param output the StringBuilder to append the values of the path to.
-     * @param value  the path to parse, format and get the values from.
-     */
-    private void outputPath(StringBuilder output, Path value) {
-        output.append(value.clickPoints.stream().map(clickPoint -> "{" + clickPoint + "},\n").collect(Collectors.joining()));
-        output.append("};\n");
-    }
-
-    /**
-     * This function generates the left and right paths from a center path and returns those paths. All math is in radians because Java's
-     * math library uses radians for its trigonometric calculations. First, it checks if the original path has more than one point because
-     * you can't calculate a heading from one point only. Then, it calculates the heading between 2 consecutive points in the original path
-     * and stores those values in an array. Next, it sets the last point to the same heading as the previous point so that the ending of the
-     * path is more accurate. Finally, it calculates the new point values (in feet) and returns those paths in the BetterArrayList of
-     * BetterArrayLists.
-     *
-     * @param points        the original center path to generate the left and right values from (point values are in feet)
-     * @param robotTrkWidth the robot track width (used as the actual width of the robot for simplicity)
-     *
-     * @return A BetterArrayList of the left and right paths (Stored in BetterArrayLists also) for the robot
-     */
-    private BetterArrayList<BetterArrayList<Waypoint>> leftRight(BetterArrayList<Waypoint> points, double robotTrkWidth) {
-        BetterArrayList<BetterArrayList<Waypoint>> temp = new BetterArrayList<>();
-        temp.add(new BetterArrayList<>(points.size())); // Left
-        temp.add(new BetterArrayList<>(points.size())); // Right
-        double[] heading = new double[points.size()];
-
-        // System.out.println(points.size());
-
-        if (points.size() > 1) {
-            // Heading calculation
-            for (int i = 0; i < points.size() - 1; i++) {
-                double x1 = points.get(i).x, x2 = points.get(i + 1).x, y1 = points.get(i).y, y2 = points.get(i + 1).y;
-                heading[i] = Math.atan2(y2 - y1, x2 - x1);
-            }
-
-            // Makes the last heading value = to the 2nd last for a smoother path.
-            heading[heading.length - 1] = heading[heading.length - 2];
-
-            // Point value calculation, temp.get(0) and temp.get(1) are the left and right paths respectively
-            // Pi / 2 rads = 90 degrees
-            // leftX = trackWidth / 2 * cos(calculatedAngleAtThatIndex + Pi / 2) + centerPathXValueAtThatIndex
-            // leftY = trackWidth / 2 * sin(calculatedAngleAtThatIndex + Pi / 2) + centerPathYValueAtThatIndex
-            // rightX = trackWidth / 2 * cos(calculatedAngleAtThatIndex - Pi / 2) + centerPathXValueAtThatIndex
-            // rightY = trackWidth / 2 * sin(calculatedAngleAtThatIndex - Pi / 2) + centerPathYValueAtThatIndex
-            for (int i = 0; i < heading.length; i++) {
-                temp.get(0).add(i, new Waypoint(robotTrkWidth / 2 * Math.cos(heading[i] + Math.PI / 2) + points.get(i).x,
-                        robotTrkWidth / 2 * Math.sin(heading[i] + Math.PI / 2) + points.get(i).y, points.get(i)));
-                temp.get(1).add(i, new Waypoint(robotTrkWidth / 2 * Math.cos(heading[i] - Math.PI / 2) + points.get(i).x,
-                        robotTrkWidth / 2 * Math.sin(heading[i] - Math.PI / 2) + points.get(i).y, points.get(i)));
-            }
-        } else if (points.size() == 1) {
-            temp.get(0).add(0, new Waypoint(points.get(0).x, points.get(0).y, points.get(0)));
-        }
-
-        return temp;
     }
 
     /**
@@ -682,9 +372,9 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
      */
     private void genPath(Path ps) {
         // The path generator object that also stores the points of the generator path
-        MPGen2D pathGen = new MPGen2D(convertPointArray(ps.clickPoints));
-        BetterArrayList<Waypoint> temp = convert2DArray(pathGen);
-        BetterArrayList<BetterArrayList<Waypoint>> lAndR = leftRight(temp, 24.0889 / 12.0);
+        MPGen2D pathGen = new MPGen2D(Utils.convertPointArray(ps.clickPoints));
+        BetterArrayList<Waypoint> temp = Utils.convert2DArray(pathGen);
+        BetterArrayList<BetterArrayList<Waypoint>> lAndR = pathGen.leftRight(temp, 24.0889 / 12.0);
 
         ps.pathSegPoints = temp;
         ps.leftPSPoints = lAndR.get(0);
@@ -703,8 +393,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
         if (p != null) {
             double[] temp = new double[2];
 
-            temp[0] = constrainTo(p.getX() - 30, ppiX, rectWidth - ppiX) / xScale;
-            temp[1] = constrainTo(((height - 30 + g.getJMenuBar().getHeight()) - p.getY()), ppiY, rectHeight - ppiY) / yScale;
+            temp[0] = Utils.constrainTo(p.getX() - 30, ppiX, rectWidth - ppiX) / xScale;
+            temp[1] = Utils.constrainTo(((height - 30 + g.getJMenuBar().getHeight()) - p.getY()), ppiY, rectHeight - ppiY) / yScale;
 
             return temp;
         }
@@ -723,27 +413,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
         if (p != null) {
             int[] temp = new int[2];
 
-            temp[0] = (int) constrainTo(p.getX() - 30, ppiX, rectWidth - ppiX);
-            temp[1] = (int) constrainTo(((height - 30 + g.getJMenuBar().getHeight()) - p.getY()), ppiY, rectHeight - ppiY);
-
-            return temp;
-        }
-
-        return null;
-    }
-
-    /**
-     * Get the waypoint's kinematic values
-     *
-     * @return the yaw, speed and acceleration values for the waypoint
-     */
-    private double[] getWaypointKinematicValues() {
-        String s;
-
-        if ((s = JOptionPane.showInputDialog("Enter a yaw (deg), speed, and accel value:")) != null) {
-            double[] temp = Arrays.stream(s.split(", ")).mapToDouble(Double::parseDouble).toArray();
-
-            temp[0] = Math.toRadians(temp[0]);
+            temp[0] = (int) Utils.constrainTo(p.getX() - 30, ppiX, rectWidth - ppiX);
+            temp[1] = (int) Utils.constrainTo(((height - 30 + g.getJMenuBar().getHeight()) - p.getY()), ppiY, rectHeight - ppiY);
 
             return temp;
         }
@@ -925,7 +596,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
          * <p>
          * If shift is not held, then we just call updateWaypoints(false).
          *
-         * @param e the MouseEvent (unused) generated when the mouse is clicked in the component
+         * @param e the MouseEvent generated when the mouse is clicked in the component
          */
         @Override
         public void mouseClicked(MouseEvent e) {
@@ -968,7 +639,24 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
                     }).start());
                 }
             } else {
-                updateWaypoints();
+                if (SwingUtilities.isLeftMouseButton(e)) {
+                    addNewWaypoint();
+                } else if (SwingUtilities.isRightMouseButton(e)) {
+                    int[] point;
+
+                    if ((point = getCursorPixels(g.getRootPane().getMousePosition())) != null) {
+                        java.awt.Point p = new java.awt.Point(point[0], point[1]);
+                        moveFlag = new Object[]{"current", -1};
+
+                        if (findClickedPoint(currentPath, p)) {
+                            System.out.println("Mouse pressed moveFlag[0]: " + moveFlag[0]);
+
+                        }
+                    } else {
+                        JOptionPane.showMessageDialog(g, "Please move your cursor back into the window!", "Boundary Monitor",
+                                JOptionPane.ERROR_MESSAGE);
+                    }
+                }
             }
         }
 
@@ -1008,9 +696,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
         }
 
         /**
-         * This function actually does the searching for the clicked point. It is similar to the previous "find" function but instead of
-         * changing the cursor it sets the moveFlag array accordingly, and if it's an unmovable point, it prompts the user to let them know
-         * that that point is unmovable.
+         * This function actually does the searching for the clicked point. If it finds the point, it sets the moveFlag array accordingly
          *
          * @param path the actual path to search through
          * @param p    the cursor point
@@ -1044,13 +730,13 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
         /**
          * This function handles all logic for updating the path correctly with the new point, if the new point is valid.
          */
-        private void updateWaypoints() {
+        private void addNewWaypoint() {
             // Get the mouse position (x, y) on the window, constrain it to the field borders and convert it to feet.
             double[] point;
 
             if ((point = getCursorFeet(g.getRootPane().getMousePosition())) != null) {
                 // Add the new point to the end of the current Path and then generate a new path accordingly.
-                double[] values = getWaypointKinematicValues();
+                double[] values = Utils.getWaypointKinematicValues();
 
                 if (values != null && values.length == 3) {
                     currentPath.clickPoints.add(new Waypoint(point[0], point[1], values[0], values[1], values[2]));

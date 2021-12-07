@@ -152,4 +152,54 @@ public class MPGen2D {
 
         return mag;
     }
+
+    /**
+     * This function generates the left and right paths from a center path and returns those paths. All math is in radians because Java's
+     * math library uses radians for its trigonometric calculations. First, it checks if the original path has more than one point because
+     * you can't calculate a heading from one point only. Then, it calculates the heading between 2 consecutive points in the original path
+     * and stores those values in an array. Next, it sets the last point to the same heading as the previous point so that the ending of the
+     * path is more accurate. Finally, it calculates the new point values (in feet) and returns those paths in the BetterArrayList of
+     * BetterArrayLists.
+     *
+     * @param points        the original center path to generate the left and right values from (point values are in feet)
+     * @param robotTrkWidth the robot track width (used as the actual width of the robot for simplicity)
+     *
+     * @return A BetterArrayList of the left and right paths (Stored in BetterArrayLists also) for the robot
+     */
+    BetterArrayList<BetterArrayList<Waypoint>> leftRight(BetterArrayList<Waypoint> points, double robotTrkWidth) {
+        BetterArrayList<BetterArrayList<Waypoint>> temp = new BetterArrayList<>();
+        temp.add(new BetterArrayList<>(points.size())); // Left
+        temp.add(new BetterArrayList<>(points.size())); // Right
+        double[] heading = new double[points.size()];
+
+        // System.out.println(points.size());
+
+        if (points.size() > 1) {
+            // Heading calculation
+            for (int i = 0; i < points.size() - 1; i++) {
+                double x1 = points.get(i).x, x2 = points.get(i + 1).x, y1 = points.get(i).y, y2 = points.get(i + 1).y;
+                heading[i] = Math.atan2(y2 - y1, x2 - x1);
+            }
+
+            // Makes the last heading value = to the 2nd last for a smoother path.
+            heading[heading.length - 1] = heading[heading.length - 2];
+
+            // Point value calculation, temp.get(0) and temp.get(1) are the left and right paths respectively
+            // Pi / 2 rads = 90 degrees
+            // leftX = trackWidth / 2 * cos(calculatedAngleAtThatIndex + Pi / 2) + centerPathXValueAtThatIndex
+            // leftY = trackWidth / 2 * sin(calculatedAngleAtThatIndex + Pi / 2) + centerPathYValueAtThatIndex
+            // rightX = trackWidth / 2 * cos(calculatedAngleAtThatIndex - Pi / 2) + centerPathXValueAtThatIndex
+            // rightY = trackWidth / 2 * sin(calculatedAngleAtThatIndex - Pi / 2) + centerPathYValueAtThatIndex
+            for (int i = 0; i < heading.length; i++) {
+                temp.get(0).add(i, new Waypoint(robotTrkWidth / 2 * Math.cos(heading[i] + Math.PI / 2) + points.get(i).x,
+                        robotTrkWidth / 2 * Math.sin(heading[i] + Math.PI / 2) + points.get(i).y, points.get(i)));
+                temp.get(1).add(i, new Waypoint(robotTrkWidth / 2 * Math.cos(heading[i] - Math.PI / 2) + points.get(i).x,
+                        robotTrkWidth / 2 * Math.sin(heading[i] - Math.PI / 2) + points.get(i).y, points.get(i)));
+            }
+        } else if (points.size() == 1) {
+            temp.get(0).add(0, new Waypoint(points.get(0).x, points.get(0).y, points.get(0)));
+        }
+
+        return temp;
+    }
 }

@@ -11,7 +11,7 @@ import java.util.Map;
  * followed by the y-values in the 2nd columns. All the 2D arrays are converted to new Polygon2D's which are then drawn.
  */
 class FieldGenerator {
-    private final LinkedHashMap<String, double[][]> elements = new LinkedHashMap<>();
+    private static final LinkedHashMap<String, double[][]> elements = new LinkedHashMap<>();
 
     // @formatter:off
     private final double[][] fieldBorder = new double[][]{
@@ -270,7 +270,7 @@ class FieldGenerator {
      * @param xScale the ratio for number of pixels per foot for the x-axis
      * @param yScale the ratio for number of pixels per foot for the y-axis
      */
-    void plotField(Graphics2D g2, int h, double xScale, double yScale) {
+    static void plotField(Graphics2D g2, int h, double xScale, double yScale) {
         for (Map.Entry<String, double[][]> entry : elements.entrySet()) {
             String key = entry.getKey();
             // If the key contains a 0 we want to fill this field element.
