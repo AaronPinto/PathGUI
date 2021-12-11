@@ -2,10 +2,9 @@ import org.apache.commons.math3.linear.*;
 
 /**
  * @author https://github.com/AtsushiSakai/PythonRobotics/blob/master/PathPlanning/QuinticPolynomialsPlanner/quinticPolynomialsPlanner.py
- * Modified by: Aaron Pinto
- * ax^5 + bx^4 + cx^3 + dx^2 + fx + g
+ * Modified by: Aaron Pinto ax^5 + bx^4 + cx^3 + dx^2 + fx + g
  */
-public class QuinticPolynomial {
+public final class QuinticPolynomial {
     private final double a;
     private final double b;
     private final double c;

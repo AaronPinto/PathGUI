@@ -15,7 +15,6 @@ import java.util.Calendar;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Scanner;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * The program takes the mouse position on the field drawn in the GUI and then based off of that, when the mouse button is clicked, it
@@ -23,13 +22,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * generates a path accordingly. The path generation is based off quintic spline interpolation.
  *
  * @author Aaron Pinto
- * @see BetterArrayList
  * @see FieldGenerator
- * @see Polygon2D
  * @see MPGen2D
- * @see Path
  */
-public class PathGUITool extends JPanel implements ClipboardOwner {
+public final class PathGUITool extends JPanel implements ClipboardOwner {
     // An object of this class, used for the Ctrl + C code
     private static PathGUITool fig;
 
@@ -39,6 +35,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
     private final LinkedHashMap<String, Path> paths = new LinkedHashMap<>();
     // Path for storing the Ctrl + Z'd points
     private final Path redoBuffer = new Path();
+    private final FieldGenerator fieldGen = new FieldGenerator();
+    private final double borderSize = 30;
 
     /**
      * doubles for storing important values, xScale and yScale are the values for pixels per foot for each axis, respectively, yTickYMax and
@@ -50,11 +48,8 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
     private int height;
     // A BetterArrayList of PathSegments which stores the values of the current path
     private Path currentPath = new Path();
-    // boolean for storing if shift is pressed
-    private boolean shift = false;
-    // An object array to store the index values necessary to locate a movable point in paths
-    // moveFlag[0] is the path name, moveFlag[1] is the Point index
-    private Object[] moveFlag = new Object[]{"", -1};
+    // A class to store the values necessary to move a clicked point in paths
+    private PointMarker moveFlag = PointMarker.DEFAULT;
 
     /**
      * Constructor.
@@ -136,7 +131,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
                 Calendar c = Calendar.getInstance();
                 JFileChooser jfc = new JFileChooser();
                 jfc.setFileFilter(new FileNameExtensionFilter("Text Files", "txt", "TXT"));
-                jfc.setSelectedFile(new File(String.format("%tB%te%tY-%tl%tM%tS%tp.txt", c, c, c, c, c, c, c)));
+                jfc.setSelectedFile(new File(String.format("%tB%te%tY-%tH%tM%tS.txt", c, c, c, c, c, c)));
 
                 if (jfc.showSaveDialog(g) == JFileChooser.APPROVE_OPTION) {
                     if (!jfc.getSelectedFile().getAbsolutePath().endsWith(".txt") &&
@@ -222,7 +217,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
                 currentPath.clear();
                 paths.clear();
                 redoBuffer.clear();
-                shift = false;
                 fig.repaint();
             }
         } else {
@@ -278,7 +272,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 
                     JOptionPane.showMessageDialog(g, "File imported successfully!", "File Importer", JOptionPane.INFORMATION_MESSAGE);
                 } catch (FileNotFoundException ex) {
-                    System.err.println("The file has magically disappeared");
+                    System.err.println("The file has magically disappeared!");
                 } catch (Exception ex) {
                     System.err.println("Please format the data correctly!");
 
@@ -292,6 +286,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
     }
 
     private void outputRedoBuffer() {
+        System.out.println("Redo buffer:");
         redoBuffer.clickPoints.forEach(System.out::println);
     }
 
@@ -310,10 +305,10 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
      * The central method which paints the panel and shows the figure and is called every time an event occurs to update the GUI. In this
      * method, we cast the Graphics object copy to a Graphics2D object, which is better suited for our purposes of drawing 2D shapes and
      * objects. Then, we store the width and height of this JPanel in double variables so that they may be used later without having to call
-     * the functions multiple times. Next, we draw the axes, grid lines, field elements, field border, and then all of the path data. We
-     * also figure out the ratio for feet to pixels in both the x and y directions, which is used for drawing a path in the correct spot on
-     * the field, and also the ratio for pixels per inch in the x and y directions, which is used to provide a buffer area for paths so that
-     * you don't have to make it perfectly perpendicular to the border.
+     * the functions multiple times. Next, we draw the axes, grid lines, field elements, field border, and then all the path data. We also
+     * figure out the ratio for feet to pixels in both the x and y directions, which is used for drawing a path in the correct spot on the
+     * field, and also the ratio for pixels per inch in the x and y directions, which is used to provide a buffer area for paths so that you
+     * don't have to make it perfectly perpendicular to the border.
      */
     @Override
     protected void paintComponent(Graphics g) {
@@ -326,35 +321,31 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
         height = getHeight();
 
         // Draw X and Y lines axis.
-        Line2D.Double yaxis = new Line2D.Double(30, 10, 30, height - 30);
-        Line2D.Double xaxis = new Line2D.Double(30, height - 30, width - 12, height - 30);
-        g2.draw(yaxis);
-        g2.draw(xaxis);
+        Line2D.Double x_axis = new Line2D.Double(borderSize, height - borderSize, width - 12, height - borderSize);
+        Line2D.Double y_axis = new Line2D.Double(borderSize, 10, borderSize, height - borderSize);
+        g2.draw(x_axis);
+        g2.draw(y_axis);
 
         // Draw ticks (the light gray grid lines and the numbers)
         double yMax = 27.0, xMax = 54.0;
-        GraphicsUtils.drawYTickRange(this, g2, yaxis, yMax);
-        GraphicsUtils.drawXTickRange(this, g2, xaxis, yaxis.getY1(), yaxis.getY2(), xMax, height);
+        GraphicsUtils.drawXTickRange(this, g2, x_axis, y_axis.getY1(), y_axis.getY2(), xMax);
+        GraphicsUtils.drawYTickRange(this, g2, y_axis, x_axis.getX1(), x_axis.getX2(), yMax);
 
         // Draw the field and everything on it
-        rectWidth = (xaxis.getX2() - xaxis.getX1());
-        rectHeight = (yaxis.getY2() - yaxis.getY1());
+        rectWidth = (x_axis.getX2() - x_axis.getX1());
+        rectHeight = (y_axis.getY2() - y_axis.getY1());
         xScale = rectWidth / xMax;
         yScale = rectHeight / yMax;
         ppiX = 1.0 / 12.0 * xScale;
         ppiY = 1.0 / 12.0 * yScale;
-        FieldGenerator.plotField(g2, height, xScale, yScale);
-        g2.setColor(Color.black);
+        fieldGen.plotField(g2, height, xScale, yScale);
 
-        Rectangle rect = new Rectangle((int) yaxis.getX1(), (int) yaxis.getY1(), (int) rectWidth, (int) rectHeight);
+        Rectangle rect = new Rectangle((int) y_axis.getX1(), (int) y_axis.getY1(), (int) rectWidth, (int) rectHeight);
+        g2.setColor(Color.black);
         g2.draw(rect);
 
-        // Hides excess grid lines on the rightmost side of the field
-        g2.setColor(super.getBackground());
-        g2.fillRect(rect.x + rect.width + 1, rect.y, (int) width - rect.width - 30, rect.height + 1);
-
         // Plot data
-        GraphicsUtils.plot(g2, currentPath, paths, xScale, yScale, height);
+        GraphicsUtils.plot(g2, currentPath, paths, borderSize, xScale, height - borderSize, yScale);
     }
 
     @Override
@@ -368,17 +359,17 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
      * pathSegment's left and right path BetterArrayLists respectively, and return true, else it will remove the last point if remove is
      * true, show the fieldError and return false.
      *
-     * @param ps the pathSegment to get the clickPoints from and generate a paths from them
+     * @param path the pathSegment to get the clickPoints from and generate a paths from them
      */
-    private void genPath(Path ps) {
+    private void genPath(Path path) {
         // The path generator object that also stores the points of the generator path
-        MPGen2D pathGen = new MPGen2D(Utils.convertPointArray(ps.clickPoints));
-        BetterArrayList<Waypoint> temp = Utils.convert2DArray(pathGen);
+        MPGen2D pathGen = new MPGen2D(Utils.convertPointArray(path.clickPoints));
+        BetterArrayList<Waypoint> temp = Utils.convert2DArray(pathGen.results);
         BetterArrayList<BetterArrayList<Waypoint>> lAndR = pathGen.leftRight(temp, 24.0889 / 12.0);
 
-        ps.pathSegPoints = temp;
-        ps.leftPSPoints = lAndR.get(0);
-        ps.rightPSPoints = lAndR.get(1);
+        path.pathPoints = temp;
+        path.leftPoints = lAndR.get(0);
+        path.rightPoints = lAndR.get(1);
     }
 
     /**
@@ -389,12 +380,12 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
      *
      * @return an array with the x and y value of that point in feet
      */
-    private double[] getCursorFeet(java.awt.Point p) {
+    private double[] getCursorFeet(Point p) {
         if (p != null) {
             double[] temp = new double[2];
 
-            temp[0] = Utils.constrainTo(p.getX() - 30, ppiX, rectWidth - ppiX) / xScale;
-            temp[1] = Utils.constrainTo(((height - 30 + g.getJMenuBar().getHeight()) - p.getY()), ppiY, rectHeight - ppiY) / yScale;
+            temp[0] = Utils.constrainTo(p.getX() - borderSize, ppiX, rectWidth - ppiX) / xScale;
+            temp[1] = Utils.constrainTo((height - borderSize + g.getJMenuBar().getHeight()) - p.getY(), ppiY, rectHeight - ppiY) / yScale;
 
             return temp;
         }
@@ -409,17 +400,21 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
      *
      * @return an array with the x and y value of that point in pixels
      */
-    private int[] getCursorPixels(java.awt.Point p) {
+    private int[] getCursorPixels(Point p) {
         if (p != null) {
             int[] temp = new int[2];
 
-            temp[0] = (int) Utils.constrainTo(p.getX() - 30, ppiX, rectWidth - ppiX);
-            temp[1] = (int) Utils.constrainTo(((height - 30 + g.getJMenuBar().getHeight()) - p.getY()), ppiY, rectHeight - ppiY);
+            temp[0] = (int) Utils.constrainTo(p.getX() - borderSize, ppiX, rectWidth - ppiX);
+            temp[1] = (int) Utils.constrainTo((height - borderSize + g.getJMenuBar().getHeight()) - p.getY(), ppiY, rectHeight - ppiY);
 
             return temp;
         }
 
         return null;
+    }
+
+    private void displayBoundaryWarning() {
+        JOptionPane.showMessageDialog(g, "Please move your cursor back into the window!", "Boundary Monitor", JOptionPane.ERROR_MESSAGE);
     }
 
     /**
@@ -467,8 +462,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
          */
         @Override
         public void keyPressed(KeyEvent e) {
-            System.out.println("Key pressed: " + e.getExtendedKeyCode());
-
             if (e.isControlDown()) {
                 if (e.getExtendedKeyCode() == 90) { // CTRL + Z
                     undo();
@@ -486,24 +479,6 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
                     clear();
                 }
             }
-
-            // Shift is set to true for as long as a shift key is held down. Used for the shift-clicking path functionality
-            if (e.getExtendedKeyCode() == 16) {
-                shift = true;
-            }
-        }
-
-        /**
-         * This function is called whenever a key is released and the JFrame has focus.
-         *
-         * @param e the KeyEvent generated whenever a key is released
-         */
-        @Override
-        public void keyReleased(KeyEvent e) {
-            // Shift is set to false when the shift key that was held down is released. Used for the shift-clicking path functionality.
-            if (e.getExtendedKeyCode() == 16) {
-                shift = false;
-            }
         }
     }
 
@@ -514,7 +489,7 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
     class WindowListener extends WindowAdapter {
         /**
          * This function overrides the function in the superclass and is called whenever the X button is clicked on the JFrame. If there is
-         * at least one Point in the current user session, it prompts the user if they want to save their point(s)/path(s). If the user says
+         * at least one point in the current user session, it prompts the user if they want to save their point(s)/path(s). If the user says
          * no, the program exits, if the user cancels the program continues, and if the user says yes then the save() function is called. If
          * the current user session has no visible points on the field, the program exits.
          *
@@ -555,31 +530,18 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
          **/
         @Override
         public void mouseDragged(MouseEvent e) {
-            if (!shift) {
-                System.out.println("Mouse dragged moveFlag[0]: " + moveFlag[0]);
-                int mf1 = (int) moveFlag[1];
+            if (!moveFlag.equals(PointMarker.DEFAULT)) {
+                double[] point;
 
-                if (mf1 > -1) {
-                    double[] point;
+                if ((point = getCursorFeet(g.getRootPane().getMousePosition())) != null) {
+                    Path temp = moveFlag.pathName.equals("current") ? currentPath : paths.get(moveFlag.pathName);
 
-                    if ((point = getCursorFeet(g.getRootPane().getMousePosition())) != null) {
-                        if (moveFlag[0].equals("current")) {
-                            currentPath.clickPoints.get(mf1).x = point[0];
-                            currentPath.clickPoints.get(mf1).y = point[1];
+                    temp.clickPoints.get(moveFlag.pointIndex).setPosition(point[0], point[1]);
+                    genPath(temp);
 
-                            genPath(currentPath);
-                        } else {
-                            paths.get(moveFlag[0].toString()).clickPoints.get(mf1).x = point[0];
-                            paths.get(moveFlag[0].toString()).clickPoints.get(mf1).y = point[1];
-
-                            genPath(paths.get(moveFlag[0].toString()));
-                        }
-
-                        fig.repaint();
-                    } else {
-                        JOptionPane.showMessageDialog(g, "Please move your cursor back into the window!", "Boundary Monitor",
-                                JOptionPane.ERROR_MESSAGE);
-                    }
+                    fig.repaint();
+                } else {
+                    displayBoundaryWarning();
                 }
             }
         }
@@ -600,62 +562,24 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
          */
         @Override
         public void mouseClicked(MouseEvent e) {
-            if (shift) {
-                AtomicBoolean b = new AtomicBoolean(false);
-                int[] point;
+            if (SwingUtilities.isLeftMouseButton(e)) {
+                addNewWaypoint();
+            } else if (SwingUtilities.isRightMouseButton(e)) { // Edit the potentially clicked waypoint in the current path
+                if (!moveFlag.equals(PointMarker.DEFAULT)) {
+                    System.out.println("Mouse clicked moveFlag: " + moveFlag);
 
-                if ((point = getCursorPixels(g.getRootPane().getMousePosition())) != null) {
-                    java.awt.Point p = new java.awt.Point(point[0], point[1]), temp = new java.awt.Point();
-                    System.out.println("Mouse clicked: " + p.x + " " + p.y);
+                    Path temp = moveFlag.pathName.equals("current") ? currentPath : paths.get(moveFlag.pathName);
 
-                    // TODO: Instead of creating a new thread every time, re-use existing threads (perhaps in a pool)
-                    paths.forEach((key, value) -> new Thread(() -> {
-                        for (Waypoint po : value.pathSegPoints) {
-                            for (int k = -3; k < 4; k++) {
-                                temp.x = (int) (po.x * xScale) + k;
+                    // Modify the clicked point and then generate the new path accordingly.
+                    String valuesToEdit = temp.clickPoints.get(moveFlag.pointIndex).getYawVelAcc();
+                    double[] values = Utils.editWaypointKinematicValues(valuesToEdit);
 
-                                for (int l = -3; l < 4; l++) {
-                                    temp.y = (int) (po.y * yScale) + l;
-
-                                    if (p.equals(temp)) {
-                                        if (b.compareAndSet(false, true)) {
-                                            JOptionPane.showMessageDialog(g, "Successfully switched paths!", "Path Switcher",
-                                                    JOptionPane.INFORMATION_MESSAGE);
-                                            System.out.println("Path switch successful");
-
-                                            Path swap = currentPath;
-                                            currentPath = paths.get(key);
-                                            paths.put(key, swap);
-
-                                            redoBuffer.clear();
-                                            shift = false;
-                                        }
-
-                                        return;
-                                    }
-                                }
-                            }
-                        }
-                    }).start());
-                }
-            } else {
-                if (SwingUtilities.isLeftMouseButton(e)) {
-                    addNewWaypoint();
-                } else if (SwingUtilities.isRightMouseButton(e)) {
-                    int[] point;
-
-                    if ((point = getCursorPixels(g.getRootPane().getMousePosition())) != null) {
-                        java.awt.Point p = new java.awt.Point(point[0], point[1]);
-                        moveFlag = new Object[]{"current", -1};
-
-                        if (findClickedPoint(currentPath, p)) {
-                            System.out.println("Mouse pressed moveFlag[0]: " + moveFlag[0]);
-
-                        }
-                    } else {
-                        JOptionPane.showMessageDialog(g, "Please move your cursor back into the window!", "Boundary Monitor",
-                                JOptionPane.ERROR_MESSAGE);
+                    if (values != null && values.length == 3) {
+                        temp.clickPoints.get(moveFlag.pointIndex).setYawVelAcc(values[0], values[1], values[2]);
+                        genPath(temp);
                     }
+
+                    fig.repaint();
                 }
             }
         }
@@ -674,50 +598,47 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
             int[] point;
 
             if ((point = getCursorPixels(g.getRootPane().getMousePosition())) != null) {
-                java.awt.Point p = new java.awt.Point(point[0], point[1]);
-                moveFlag = new Object[]{"current", -1};
+                Point p = new Point(point[0], point[1]);
+                moveFlag = PointMarker.DEFAULT;
 
                 // Check the current path to see if the clicked point is a part of it, and if it isn't, then check all the other paths.
-                // Only check the other paths if you can't find it in the current one to save time and resources instead of needlessly
-                // searching through extra paths
-                if (!findClickedPoint(currentPath, p)) {
-                    System.out.println("Mouse pressed moveFlag[0]: " + moveFlag[0]);
-
+                if (!findClickedPoint("current", currentPath, p)) {
                     for (Map.Entry<String, Path> en : paths.entrySet()) {
-                        if (findClickedPoint(en.getValue(), p)) {
+                        if (findClickedPoint(en.getKey(), en.getValue(), p)) {
                             break;
                         }
                     }
                 }
+
+                System.out.println("Mouse pressed moveFlag: " + moveFlag);
             } else {
-                JOptionPane.showMessageDialog(g, "Please move your cursor back into the window!", "Boundary Monitor",
-                        JOptionPane.ERROR_MESSAGE);
+                displayBoundaryWarning();
             }
         }
 
         /**
          * This function actually does the searching for the clicked point. If it finds the point, it sets the moveFlag array accordingly
          *
-         * @param path the actual path to search through
-         * @param p    the cursor point
+         * @param pathName the name of the path to search through
+         * @param path     the actual path to search through
+         * @param p        the cursor point
          *
          * @return false if it can't find a corresponding point, true otherwise
          */
-        private boolean findClickedPoint(Path path, java.awt.Point p) {
-            java.awt.Point temp = new java.awt.Point();
+        private boolean findClickedPoint(String pathName, Path path, Point p) {
+            Point temp = new Point();
 
             for (int i = 0; i < path.clickPoints.size(); i++) {
                 Waypoint po = path.clickPoints.get(i);
 
                 for (int k = -3; k < 4; k++) {
-                    temp.x = (int) (po.x * xScale) + k;
+                    temp.x = (int) (po.getX() * xScale) + k;
 
                     for (int l = -3; l < 4; l++) {
-                        temp.y = (int) (po.y * yScale) + l;
+                        temp.y = (int) (po.getY() * yScale) + l;
 
                         if (p.equals(temp)) {
-                            moveFlag = new Object[]{"current", i};
-
+                            moveFlag = new PointMarker(pathName, i);
                             return true;
                         }
                     }
@@ -744,13 +665,11 @@ public class PathGUITool extends JPanel implements ClipboardOwner {
 
                     // Every time a new point is added, clear the redo buffer
                     redoBuffer.clear();
-                    System.out.println("Waypoint updated: " + point[0] + " " + point[1]);
                 }
 
                 fig.repaint();
             } else {
-                JOptionPane.showMessageDialog(g, "Please move your cursor back into the window!", "Boundary Monitor",
-                        JOptionPane.ERROR_MESSAGE);
+                displayBoundaryWarning();
             }
         }
     }

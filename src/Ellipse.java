@@ -3,7 +3,7 @@ import org.apache.commons.math3.linear.*;
 /**
  * ax^2 + by^2 + cx = 0
  */
-public class Ellipse {
+public final class Ellipse {
     private final double a;
     private final double b;
     private final double c;

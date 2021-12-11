@@ -3,7 +3,7 @@ import org.apache.commons.math3.linear.*;
 /**
  * ax^3 + bx^2
  */
-public class CubicPolynomial {
+public final class CubicPolynomial {
     private final double a;
     private final double b;
     RealMatrix A;

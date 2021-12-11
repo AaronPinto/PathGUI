@@ -5,7 +5,7 @@ import java.io.Serializable;
 /**
  * This class is a Polygon with double coordinates.
  */
-public class Polygon2D implements Shape, Cloneable, Serializable {
+public final class Polygon2D implements Shape, Cloneable, Serializable {
     private static final long serialVersionUID = 1L;
     /**
      * The total number of points. The value of <code>npoints</code> represents the number of valid points in this <code>Polygon</code>.

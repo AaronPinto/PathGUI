@@ -1,7 +1,7 @@
 import java.util.ArrayList;
 import java.util.Arrays;
 
-public class ReedsShepp {
+public final class ReedsShepp {
     private static final PathSegmentResults PSR_FALSE = new PathSegmentResults(false, 0.0, 0.0, 0.0);
 
     private static class PathSegmentResults {

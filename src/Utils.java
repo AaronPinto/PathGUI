@@ -1,10 +1,9 @@
 import javax.swing.*;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.stream.Collectors;
 
-public class Utils {
+public final class Utils {
     /**
      * This function formats and appends all the values in all the paths into proper 2D array syntax and then returns that String.
      *
@@ -49,13 +48,11 @@ public class Utils {
         return Math.max(minConstrain, Math.min(maxConstrain, value));
     }
 
-    static BetterArrayList<Waypoint> convert2DArray(MPGen2D pathGen) {
+    static BetterArrayList<Waypoint> convert2DArray(MPGen2D.Results results) {
         BetterArrayList<Waypoint> temp = new BetterArrayList<>();
-        ArrayList<ArrayList<Double>> results = pathGen.results;
 
-        for (int i = 0; i < results.get(0).size(); i++) {
-            temp.add(new Waypoint(results.get(1).get(i), results.get(2).get(i), results.get(3).get(i), results.get(4).get(i),
-                    results.get(5).get(i)));
+        for (int i = 0; i < results.time.size(); i++) {
+            temp.add(new Waypoint(results.x.get(i), results.y.get(i), results.yaw.get(i), results.vel.get(i), results.accel.get(i)));
         }
 
         return temp;
@@ -77,7 +74,7 @@ public class Utils {
     /**
      * Get the waypoint's kinematic values
      *
-     * @return the yaw, speed and acceleration values for the waypoint
+     * @return the yaw (rad), speed and acceleration values for the waypoint
      */
     static double[] getWaypointKinematicValues() {
         String s;
@@ -88,6 +85,21 @@ public class Utils {
             temp[0] = Math.toRadians(temp[0]);
 
             return temp;
+        }
+
+        return null;
+    }
+
+    /**
+     * Get the waypoint's kinematic values
+     *
+     * @return the yaw (deg), speed and acceleration values for the waypoint
+     */
+    static double[] editWaypointKinematicValues(String initialValue) {
+        String s;
+
+        if ((s = JOptionPane.showInputDialog(null, "Edit yaw (deg), speed, and accel values:", initialValue)) != null) {
+            return Arrays.stream(s.split(", ")).mapToDouble(Double::parseDouble).toArray();
         }
 
         return null;

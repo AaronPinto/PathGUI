@@ -4,165 +4,164 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * This class is used for storing and drawing all the field elements. Each element is stored in its own 2D array and then it is added to a
- * LinkedHashMap only or also to an ArrayList. The LinkedHashMap is used to store all the field elements that need to be drawn, and the
- * ArrayList is used for storing invalid areas. An invalid area is a part of the field where it is normally impossible to enter, unless you
- * flip over or something during an actual match. The values in the 2D arrays are in feet, and the x-values are in the first columns
- * followed by the y-values in the 2nd columns. All the 2D arrays are converted to new Polygon2D's which are then drawn.
+ * This class is used for storing and drawing all the field elements. Each element is stored in its own 2D array, and then it is added to a
+ * LinkedHashMap. The LinkedHashMap is used to store all the field elements that need to be drawn. The values in the 2D arrays are in feet,
+ * and the x-values are in the first columns followed by the y-values in the 2nd columns. All the 2D arrays are converted to new Polygon2D's
+ * which are then drawn.
  */
-class FieldGenerator {
+final class FieldGenerator {
     private static final LinkedHashMap<String, double[][]> elements = new LinkedHashMap<>();
 
     // @formatter:off
     private final double[][] fieldBorder = new double[][]{
-            {0.0, 0.0},
-            {54.0, 0},
-            {54.0, 27.0},
-            {0, 27.0},
-            {0.0, 0.0}
+        {0.0, 0.0},
+        {54.0, 0},
+        {54.0, 27.0},
+        {0, 27.0},
+        {0.0, 0.0}
     };
 
     private final double[][] leftAutoLine = new double[][]{
-            {0.0 + incToFt(120), 0.0},
-            {0.0 + incToFt(120), 27.0},
-            {0.0 + incToFt(120) + incToFt(2.0), 27.0},
-            {0.0 + incToFt(120) + incToFt(2.0), 0.0}
+        {0.0 + incToFt(120), 0.0},
+        {0.0 + incToFt(120), 27.0},
+        {0.0 + incToFt(120) + incToFt(2.0), 27.0},
+        {0.0 + incToFt(120) + incToFt(2.0), 0.0}
     };
 
     private final double[][] redExZone = new double[][]{
-            {0.0, 27.0 / 2 + incToFt(12.0)},
-            {incToFt(36.0), 27.0 / 2 + incToFt(12.0)},
-            {incToFt(36.0), 27.0 / 2 + incToFt(60.0)},
-            {0.0, 27.0 / 2 + incToFt(60.0)},
-            {0.0, 27.0 / 2 + incToFt(58.0)},
-            {incToFt(36.0) - incToFt(2.0), 27.0 / 2 + incToFt(58.0)},
-            {incToFt(36.0) - incToFt(2.0), 27.0 / 2 + incToFt(14.0)},
-            {0.0, 27.0 / 2 + incToFt(14.0)}
+        {0.0, 27.0 / 2 + incToFt(12.0)},
+        {incToFt(36.0), 27.0 / 2 + incToFt(12.0)},
+        {incToFt(36.0), 27.0 / 2 + incToFt(60.0)},
+        {0.0, 27.0 / 2 + incToFt(60.0)},
+        {0.0, 27.0 / 2 + incToFt(58.0)},
+        {incToFt(36.0) - incToFt(2.0), 27.0 / 2 + incToFt(58.0)},
+        {incToFt(36.0) - incToFt(2.0), 27.0 / 2 + incToFt(14.0)},
+        {0.0, 27.0 / 2 + incToFt(14.0)}
     };
 
     private final double[][] redPcZone = new double[][]{
-            {incToFt(140.0), 27.0 / 2 - incToFt(45.0 / 2)},
-            {incToFt(98.0), 27.0 / 2 - incToFt(45.0 / 2)},
-            {incToFt(98.0), 27.0 / 2 + incToFt(45.0 / 2)},
-            {incToFt(140.0), 27.0 / 2 + incToFt(45.0 / 2)},
-            {incToFt(140.0), 27.0 / 2 + incToFt(41.0 / 2)},
-            {incToFt(100.0), 27.0 / 2 + incToFt(41.0 / 2)},
-            {incToFt(100.0), 27.0 / 2 - incToFt(41.0 / 2)},
-            {incToFt(140.0), 27.0 / 2 - incToFt(41.0 / 2)}
+        {incToFt(140.0), 27.0 / 2 - incToFt(45.0 / 2)},
+        {incToFt(98.0), 27.0 / 2 - incToFt(45.0 / 2)},
+        {incToFt(98.0), 27.0 / 2 + incToFt(45.0 / 2)},
+        {incToFt(140.0), 27.0 / 2 + incToFt(45.0 / 2)},
+        {incToFt(140.0), 27.0 / 2 + incToFt(41.0 / 2)},
+        {incToFt(100.0), 27.0 / 2 + incToFt(41.0 / 2)},
+        {incToFt(100.0), 27.0 / 2 - incToFt(41.0 / 2)},
+        {incToFt(140.0), 27.0 / 2 - incToFt(41.0 / 2)}
     };
 
     private final double[][] leftSwitchFrame = new double[][]{
-            {incToFt(140.0), 27.0 / 2 - (12.0 + incToFt(9.5)) / 2},
-            {incToFt(140.0), 27.0 / 2 + (12.0 + incToFt(9.5)) / 2},
-            {incToFt(196.0), 27.0 / 2 + (12.0 + incToFt(9.5)) / 2},
-            {incToFt(196.0), 27.0 / 2 - (12.0 + incToFt(9.5)) / 2},
-            {incToFt(140.0), 27.0 / 2 - (12.0 + incToFt(9.5)) / 2}
+        {incToFt(140.0), 27.0 / 2 - (12.0 + incToFt(9.5)) / 2},
+        {incToFt(140.0), 27.0 / 2 + (12.0 + incToFt(9.5)) / 2},
+        {incToFt(196.0), 27.0 / 2 + (12.0 + incToFt(9.5)) / 2},
+        {incToFt(196.0), 27.0 / 2 - (12.0 + incToFt(9.5)) / 2},
+        {incToFt(140.0), 27.0 / 2 - (12.0 + incToFt(9.5)) / 2}
     };
 
     private final double[][] leftSwitchTop = new double[][]{
-            {incToFt(144.0), 27.0 / 2 + (12.0 + incToFt(9.5)) / 2 - incToFt(38.25)},
-            {incToFt(144.0), 27.0 / 2 + (12.0 + incToFt(9.5)) / 2 - incToFt(2.25)},
-            {incToFt(192.0), 27.0 / 2 + (12.0 + incToFt(9.5)) / 2 - incToFt(2.25)},
-            {incToFt(192.0), 27.0 / 2 + (12.0 + incToFt(9.5)) / 2 - incToFt(38.25)}
+        {incToFt(144.0), 27.0 / 2 + (12.0 + incToFt(9.5)) / 2 - incToFt(38.25)},
+        {incToFt(144.0), 27.0 / 2 + (12.0 + incToFt(9.5)) / 2 - incToFt(2.25)},
+        {incToFt(192.0), 27.0 / 2 + (12.0 + incToFt(9.5)) / 2 - incToFt(2.25)},
+        {incToFt(192.0), 27.0 / 2 + (12.0 + incToFt(9.5)) / 2 - incToFt(38.25)}
     };
 
     private final double[][] leftSwitchBot = new double[][]{
-            {incToFt(144.0), 27.0 / 2 - (12.0 + incToFt(9.5)) / 2 + incToFt(38.25)},
-            {incToFt(144.0), 27.0 / 2 - (12.0 + incToFt(9.5)) / 2 + incToFt(2.25)},
-            {incToFt(192.0), 27.0 / 2 - (12.0 + incToFt(9.5)) / 2 + incToFt(2.25)},
-            {incToFt(192.0), 27.0 / 2 - (12.0 + incToFt(9.5)) / 2 + incToFt(38.25)}
+        {incToFt(144.0), 27.0 / 2 - (12.0 + incToFt(9.5)) / 2 + incToFt(38.25)},
+        {incToFt(144.0), 27.0 / 2 - (12.0 + incToFt(9.5)) / 2 + incToFt(2.25)},
+        {incToFt(192.0), 27.0 / 2 - (12.0 + incToFt(9.5)) / 2 + incToFt(2.25)},
+        {incToFt(192.0), 27.0 / 2 - (12.0 + incToFt(9.5)) / 2 + incToFt(38.25)}
     };
 
     private final double[][] redPlatZoneLineBot = new double[][]{
-            {incToFt(196.0), incToFt(95.25)},
-            {27.0, incToFt(95.25)},
-            {27.0, incToFt(97.25)},
-            {incToFt(196.0), incToFt(97.25)}
+        {incToFt(196.0), incToFt(95.25)},
+        {27.0, incToFt(95.25)},
+        {27.0, incToFt(97.25)},
+        {incToFt(196.0), incToFt(97.25)}
     };
 
     private final double[][] redPlat = new double[][]{
-            {incToFt(261.47), incToFt(97.25)},
-            {incToFt(261.47), incToFt(97.25) + incToFt(12.5362481) * 2 + 8.8},
-            {27.0, incToFt(97.25) + incToFt(12.5362481) * 2 + 8.8},
-            {27.0, incToFt(97.25)}
+        {incToFt(261.47), incToFt(97.25)},
+        {incToFt(261.47), incToFt(97.25) + incToFt(12.5362481) * 2 + 8.8},
+        {27.0, incToFt(97.25) + incToFt(12.5362481) * 2 + 8.8},
+        {27.0, incToFt(97.25)}
     };
 
     private final double[][] redPlatInner = new double[][]{
-            {incToFt(261.47 + 12.5362481), 27.0 / 2 - 4.4},
-            {incToFt(261.47 + 12.5362481), 27.0 / 2 + 4.4},
-            {27.0, 27.0 / 2 + 4.4},
-            {27.0, 27.0 / 2 - 4.4}
+        {incToFt(261.47 + 12.5362481), 27.0 / 2 - 4.4},
+        {incToFt(261.47 + 12.5362481), 27.0 / 2 + 4.4},
+        {27.0, 27.0 / 2 + 4.4},
+        {27.0, 27.0 / 2 - 4.4}
     };
 
     private final double[][] scaleBot = new double[][]{
-            {incToFt(299.65), incToFt(71.57)},
-            {incToFt(299.65), incToFt(71.57 + 36.0)},
-            {incToFt(299.65 + 48.0), incToFt(71.57 + 36.0)},
-            {incToFt(299.65 + 48.0), incToFt(71.57)}
+        {incToFt(299.65), incToFt(71.57)},
+        {incToFt(299.65), incToFt(71.57 + 36.0)},
+        {incToFt(299.65 + 48.0), incToFt(71.57 + 36.0)},
+        {incToFt(299.65 + 48.0), incToFt(71.57)}
     };
 
     private final double[][] scaleMid = new double[][]{
-            {27.0 - incToFt(6.25), incToFt(97.25)},
-            {27.0 - incToFt(6.25), incToFt(97.25) + 10.791666},
-            {27.0 + incToFt(6.25), incToFt(97.25) + 10.791666},
-            {27.0 + incToFt(6.25), incToFt(97.25)},
-            {27.0 - incToFt(6.25), incToFt(97.25)}
+        {27.0 - incToFt(6.25), incToFt(97.25)},
+        {27.0 - incToFt(6.25), incToFt(97.25) + 10.791666},
+        {27.0 + incToFt(6.25), incToFt(97.25) + 10.791666},
+        {27.0 + incToFt(6.25), incToFt(97.25)},
+        {27.0 - incToFt(6.25), incToFt(97.25)}
     };
 
     private final double[][] nullTop = new double[][]{
-            {incToFt(288.0), 0.0},
-            {incToFt(288.0), incToFt(95.25)},
-            {incToFt(288.0 + 72.0), incToFt(95.25)},
-            {incToFt(288.0 + 72.0), 0.0},
-            {incToFt(288.0 + 70.0), 0.0},
-            {incToFt(288.0 + 70.0), incToFt(93.25)},
-            {incToFt(288.0 + 2.0), incToFt(93.25)},
-            {incToFt(288.0 + 2.0), 0.0}
+        {incToFt(288.0), 0.0},
+        {incToFt(288.0), incToFt(95.25)},
+        {incToFt(288.0 + 72.0), incToFt(95.25)},
+        {incToFt(288.0 + 72.0), 0.0},
+        {incToFt(288.0 + 70.0), 0.0},
+        {incToFt(288.0 + 70.0), incToFt(93.25)},
+        {incToFt(288.0 + 2.0), incToFt(93.25)},
+        {incToFt(288.0 + 2.0), 0.0}
     };
 
     private final double[][] blueTopPortal = new double[][]{
-            {-0.001, 27.001},
-            {-0.001, 24.5258333}, // 27.0 - 2.4741667
-            {3.0, 27.001},
-            {-0.001, 27.001}
+        {-0.001, 27.001},
+        {-0.001, 24.5258333}, // 27.0 - 2.4741667
+        {3.0, 27.001},
+        {-0.001, 27.001}
     };
 
     private final double[][] redBotPortal = new double[][]{
-            {54.001, -0.001},
-            {54.001, 2.4741667},
-            {51.0, -0.001},
-            {54.001, -0.001}
+        {54.001, -0.001},
+        {54.001, 2.4741667},
+        {51.0, -0.001},
+        {54.001, -0.001}
     };
 
     private final double[][] topLeftPC = new double[][]{
-            {incToFt(196.0), 27.0 / 2 + (12.0 + incToFt(9.5)) / 2},
-            {incToFt(196.0) + incToFt(13), 27.0 / 2 + (12.0 + incToFt(9.5)) / 2},
-            {incToFt(196.0) + incToFt(13), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(13)},
-            {incToFt(196.0), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(13)}
+        {incToFt(196.0), 27.0 / 2 + (12.0 + incToFt(9.5)) / 2},
+        {incToFt(196.0) + incToFt(13), 27.0 / 2 + (12.0 + incToFt(9.5)) / 2},
+        {incToFt(196.0) + incToFt(13), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(13)},
+        {incToFt(196.0), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(13)}
     };
 
     private final double[][] secondTopLeftPC = new double[][]{
-            {incToFt(196.0), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(15.1 + 13)},
-            {incToFt(196.0) + incToFt(13), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(15.1 + 13)},
-            {incToFt(196.0) + incToFt(13), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(15.1 + 26)},
-            {incToFt(196.0), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(15.1 + 26)}
+        {incToFt(196.0), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(15.1 + 13)},
+        {incToFt(196.0) + incToFt(13), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(15.1 + 13)},
+        {incToFt(196.0) + incToFt(13), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(15.1 + 26)},
+        {incToFt(196.0), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(15.1 + 26)}
     };
 
     private final double[][] thirdTopLeftPC = new double[][]{
-            {incToFt(196.0), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(30.2 + 26)},
-            {incToFt(196.0) + incToFt(13), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(30.2 + 26)},
-            {incToFt(196.0) + incToFt(13), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(30.2 + 39)},
-            {incToFt(196.0), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(30.2 + 39)}
+        {incToFt(196.0), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(30.2 + 26)},
+        {incToFt(196.0) + incToFt(13), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(30.2 + 26)},
+        {incToFt(196.0) + incToFt(13), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(30.2 + 39)},
+        {incToFt(196.0), (27.0 / 2 + (12.0 + incToFt(9.5)) / 2) - incToFt(30.2 + 39)}
     };
 
     private final double[][] redCableSwitchToPlat = new double[][]{
-            {incToFt(196.0), incToFt(97.25) + (10.791666 / 2)},
-            {incToFt(261.47), incToFt(97.25) + (10.791666 / 2)}
+        {incToFt(196.0), incToFt(97.25) + (10.791666 / 2)},
+        {incToFt(261.47), incToFt(97.25) + (10.791666 / 2)}
     };
 
     private final double[][] cableThroughScale = new double[][]{
-            {27.0, 27.0},
-            {27.0, 0}
+        {27.0, 27.0},
+        {27.0, 0}
     };
     // @formatter:on
 
@@ -270,7 +269,7 @@ class FieldGenerator {
      * @param xScale the ratio for number of pixels per foot for the x-axis
      * @param yScale the ratio for number of pixels per foot for the y-axis
      */
-    static void plotField(Graphics2D g2, int h, double xScale, double yScale) {
+    void plotField(Graphics2D g2, int h, double xScale, double yScale) {
         for (Map.Entry<String, double[][]> entry : elements.entrySet()) {
             String key = entry.getKey();
             // If the key contains a 0 we want to fill this field element.

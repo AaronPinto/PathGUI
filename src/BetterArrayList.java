@@ -6,7 +6,7 @@ import java.util.ArrayList;
  *
  * @param <E>
  */
-public class BetterArrayList<E> extends ArrayList<E> {
+public final class BetterArrayList<E> extends ArrayList<E> {
     /**
      * Constructor for creating an ArrayList with the specified initial capacity
      *
@@ -29,5 +29,14 @@ public class BetterArrayList<E> extends ArrayList<E> {
      */
     E removeLast() {
         return this.remove(this.size() - 1);
+    }
+
+    /**
+     * Sets the last element in this ArrayList to the specified value
+     *
+     * @param element the value to replace the existing one with
+     */
+    void setLast(E element) {
+        super.set(this.size() - 1, element);
     }
 }

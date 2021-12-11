@@ -1,28 +1,27 @@
 /**
- * A path segment is clicked, and we need to keep track of that for the different keyboard shortcuts. It also needs to store the points of a
- * path segment and those waypoints as well.
+ * A path stores the points of a path, the waypoints used to create that path, and the left and right path points as well.
  */
-public class Path {
-    BetterArrayList<Waypoint> pathSegPoints, clickPoints, leftPSPoints, rightPSPoints;
+public final class Path {
+    BetterArrayList<Waypoint> pathPoints, clickPoints, leftPoints, rightPoints;
 
     /**
      * Constructor for a Path
      */
     Path() {
-        this.pathSegPoints = new BetterArrayList<>();
-        this.clickPoints = new BetterArrayList<>(0); // The 0 is intentional
-        this.leftPSPoints = new BetterArrayList<>();
-        this.rightPSPoints = new BetterArrayList<>();
+        this.pathPoints = new BetterArrayList<>();
+        this.clickPoints = new BetterArrayList<>();
+        this.leftPoints = new BetterArrayList<>();
+        this.rightPoints = new BetterArrayList<>();
     }
 
     boolean isEmpty() {
-        return this.pathSegPoints.isEmpty() && this.clickPoints.isEmpty();
+        return this.pathPoints.isEmpty() && this.clickPoints.isEmpty();
     }
 
     void clear() {
-        this.pathSegPoints.clear();
+        this.pathPoints.clear();
         this.clickPoints.clear();
-        this.leftPSPoints.clear();
-        this.rightPSPoints.clear();
+        this.leftPoints.clear();
+        this.rightPoints.clear();
     }
 }
