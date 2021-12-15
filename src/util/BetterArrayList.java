@@ -1,3 +1,5 @@
+package util;
+
 import java.util.ArrayList;
 
 /**
@@ -12,14 +14,14 @@ public final class BetterArrayList<E> extends ArrayList<E> {
      *
      * @param i the initial capacity
      */
-    BetterArrayList(int i) {
+    public BetterArrayList(int i) {
         super(i);
     }
 
     /**
      * Default constructor
      */
-    BetterArrayList() {
+    public BetterArrayList() {
     }
 
     /**
@@ -27,8 +29,17 @@ public final class BetterArrayList<E> extends ArrayList<E> {
      *
      * @return the removed last element in this ArrayList
      */
-    E removeLast() {
+    public E removeLast() {
         return this.remove(this.size() - 1);
+    }
+
+    /**
+     * Returns the last element in this ArrayList
+     *
+     * @return the last element in this ArrayList
+     */
+    public E getLast() {
+        return super.get(this.size() - 1);
     }
 
     /**
@@ -36,7 +47,16 @@ public final class BetterArrayList<E> extends ArrayList<E> {
      *
      * @param element the value to replace the existing one with
      */
-    void setLast(E element) {
+    public void setLast(E element) {
         super.set(this.size() - 1, element);
+    }
+
+    /**
+     * Returns the 2nd last element in this ArrayList
+     *
+     * @return the 2nd last element in this ArrayList
+     */
+    public E get2ndLast() {
+        return super.get(this.size() - 2);
     }
 }

@@ -10,10 +10,6 @@ public final class CubicPolynomial {
     RealVector B;
     RealVector x;
 
-    public static void main(String[] args) {
-        new CubicPolynomial(6.00444279957, Math.PI / 6.0, Math.PI / 4.0);
-    }
-
     CubicPolynomial(double d, double theta, double phi) {
         // Solve the linear equation A × X = B.
         double dcos = d * Math.cos(theta);
@@ -33,6 +29,10 @@ public final class CubicPolynomial {
         this.b = this.x.getEntry(1);
 
         System.out.println(a + "x^3 + " + b + "x^2");
+    }
+
+    public static void main(String[] args) {
+        new CubicPolynomial(6.00444279957, Math.PI / 6.0, Math.PI / 4.0);
     }
 
     double calcPoint(double t) {

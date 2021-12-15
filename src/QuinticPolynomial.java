@@ -11,9 +11,6 @@ public final class QuinticPolynomial {
     private final double d;
     private final double f;
     private final double g;
-    RealMatrix A;
-    RealVector B;
-    RealVector x;
 
     QuinticPolynomial(double xs, double vxs, double axs, double xe, double vxe, double axe, double T) {
         this.g = xs;
@@ -23,20 +20,20 @@ public final class QuinticPolynomial {
         double T2 = T * T, T3 = T * T * T, T4 = T * T * T * T, T5 = T * T * T * T * T;
 
         // Solve the linear equation A × X = B. @formatter:off
-        this.A = new Array2DRowRealMatrix(new double[][]{
+        RealMatrix a1 = new Array2DRowRealMatrix(new double[][]{
                 {T3, T4, T5},
                 {3.0 * T2, 4.0 * T3, 5.0 * T4},
                 {6.0 * T, 12.0 * T2, 20.0 * T3}
         });
-        this.B = new ArrayRealVector(new double[]{
+        RealVector b1 = new ArrayRealVector(new double[]{
                 xe - this.g - this.f * T - this.d * T2, vxe - this.f - 2.0 * this.d * T, axe - 2.0 * this.d
         });
         // @formatter:on
-        this.x = new LUDecomposition(this.A).getSolver().solve(B);
+        RealVector x = new LUDecomposition(a1).getSolver().solve(b1);
 
-        this.c = this.x.getEntry(0);
-        this.b = this.x.getEntry(1);
-        this.a = this.x.getEntry(2);
+        this.c = x.getEntry(0);
+        this.b = x.getEntry(1);
+        this.a = x.getEntry(2);
     }
 
     void printCoeffs() {

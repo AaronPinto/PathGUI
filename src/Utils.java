@@ -1,9 +1,15 @@
+import util.BetterArrayList;
+import util.Path;
+import util.Waypoint;
+
 import javax.swing.*;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.stream.Collectors;
 
 public final class Utils {
+    private static final double kEpsilon = 1e-9;
+
     /**
      * This function formats and appends all the values in all the paths into proper 2D array syntax and then returns that String.
      *
@@ -48,14 +54,18 @@ public final class Utils {
         return Math.max(minConstrain, Math.min(maxConstrain, value));
     }
 
-    static BetterArrayList<Waypoint> convert2DArray(MPGen2D.Results results) {
+    public static BetterArrayList<Waypoint> convertResults(PathResults results) {
         BetterArrayList<Waypoint> temp = new BetterArrayList<>();
 
         for (int i = 0; i < results.time.size(); i++) {
-            temp.add(new Waypoint(results.x.get(i), results.y.get(i), results.yaw.get(i), results.vel.get(i), results.accel.get(i)));
+            temp.add(new Waypoint(results.x.get(i), results.y.get(i), results.getRad().get(i), results.vel.get(i), results.accel.get(i)));
         }
 
         return temp;
+    }
+
+    public static boolean absLessThanEps(double x) {
+        return Math.abs(x) < kEpsilon;
     }
 
     /**

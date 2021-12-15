@@ -1,3 +1,5 @@
+import util.Path;
+
 import java.awt.*;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Line2D;
@@ -12,7 +14,7 @@ public final class GraphicsUtils {
      * @param y_axis The line that represents the y-axis
      * @param max    The width of the field in feet
      */
-    static void drawYTickRange(PathGUITool p, Graphics2D g2, Line2D y_axis, double xTickXMin, double xTickXMax, double max) {
+    public static void drawYTickRange(PathGUITool p, Graphics2D g2, Line2D y_axis, double xTickXMin, double xTickXMax, double max) {
         double upperY_tick = Math.ceil(max);
 
         // The starting and ending x and y values for the y-axis
@@ -62,7 +64,7 @@ public final class GraphicsUtils {
      * @param x_axis The line that represents the x-axis
      * @param max    The width of the field in feet
      */
-    static void drawXTickRange(PathGUITool p, Graphics2D g2, Line2D x_axis, double yTickYMin, double yTickYMax, double max) {
+    public static void drawXTickRange(PathGUITool p, Graphics2D g2, Line2D x_axis, double yTickYMin, double yTickYMax, double max) {
         double upperX_tick = Math.ceil(max);
 
         // The starting and ending x and y values for the x-axis
@@ -168,7 +170,8 @@ public final class GraphicsUtils {
      *
      * @param g2 the 2D graphics object used to draw everything
      */
-    static void plot(Graphics2D g2, Path currPath, LinkedHashMap<String, Path> paths, double xOff, double xScl, double yOff, double yScl) {
+    public static void plot(Graphics2D g2, Path currPath, LinkedHashMap<String, Path> paths, double xOff, double xScl, double yOff,
+            double yScl) {
         Color tempC = g2.getColor();
 
         // Plot the current path then loop through paths and plot each

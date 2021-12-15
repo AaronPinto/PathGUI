@@ -1,3 +1,5 @@
+import util.*;
+
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
@@ -244,11 +246,9 @@ public final class PathGUITool extends JPanel implements ClipboardOwner {
                         String s = fileReader.nextLine();
                         // Opening syntax line
                         if (s.contains("Object[][]") && s.contains("= new Object[][]{")) {
-                            if (currentPath.isEmpty()) {
-                                System.out.println("Should only run once");
-                            } else {
+                            if (!currentPath.isEmpty()) {
                                 // Every new 2D array, check the previous one to see if it was valid
-                                System.out.println("Should run every new 2D array");
+                                genPath(currentPath);
                                 addToPathsAndClear();
                             }
 
@@ -261,9 +261,8 @@ public final class PathGUITool extends JPanel implements ClipboardOwner {
                         String[] o = s.split(", ");
                         // This line must contain point values
                         if (o.length > 1) {
-                            currentPath.clickPoints.add(
-                                    new Waypoint(Double.parseDouble(o[0]), Double.parseDouble(o[1]), Double.parseDouble(o[2]),
-                                            Double.parseDouble(o[3]), Double.parseDouble(o[4])));
+                            currentPath.clickPoints.add(new Waypoint(Double.parseDouble(o[0]), Double.parseDouble(o[1]),
+                                    Math.toRadians(Double.parseDouble(o[2])), Double.parseDouble(o[3]), Double.parseDouble(o[4])));
                         }
                     }
 
@@ -278,10 +277,12 @@ public final class PathGUITool extends JPanel implements ClipboardOwner {
 
                     JOptionPane.showMessageDialog(g, "You cannot import this path as it is!", "File Importer", JOptionPane.ERROR_MESSAGE);
                     currentPath.clear();
+                } finally {
+                    // Add last imported path to paths and clear the current path.
+                    genPath(currentPath);
+                    addToPathsAndClear();
                 }
             }
-            // Add last imported path to paths and clear the current path.
-            addToPathsAndClear();
         }
     }
 
@@ -364,7 +365,7 @@ public final class PathGUITool extends JPanel implements ClipboardOwner {
     private void genPath(Path path) {
         // The path generator object that also stores the points of the generator path
         MPGen2D pathGen = new MPGen2D(Utils.convertPointArray(path.clickPoints));
-        BetterArrayList<Waypoint> temp = Utils.convert2DArray(pathGen.results);
+        BetterArrayList<Waypoint> temp = Utils.convertResults(pathGen.results);
         BetterArrayList<BetterArrayList<Waypoint>> lAndR = pathGen.leftRight(temp, 24.0889 / 12.0);
 
         path.pathPoints = temp;
@@ -534,9 +535,9 @@ public final class PathGUITool extends JPanel implements ClipboardOwner {
                 double[] point;
 
                 if ((point = getCursorFeet(g.getRootPane().getMousePosition())) != null) {
-                    Path temp = moveFlag.pathName.equals("current") ? currentPath : paths.get(moveFlag.pathName);
+                    Path temp = moveFlag.getPathName().equals("current") ? currentPath : paths.get(moveFlag.getPathName());
 
-                    temp.clickPoints.get(moveFlag.pointIndex).setPosition(point[0], point[1]);
+                    temp.clickPoints.get(moveFlag.getPointIndex()).setPosition(point[0], point[1]);
                     genPath(temp);
 
                     fig.repaint();
@@ -568,14 +569,14 @@ public final class PathGUITool extends JPanel implements ClipboardOwner {
                 if (!moveFlag.equals(PointMarker.DEFAULT)) {
                     System.out.println("Mouse clicked moveFlag: " + moveFlag);
 
-                    Path temp = moveFlag.pathName.equals("current") ? currentPath : paths.get(moveFlag.pathName);
+                    Path temp = moveFlag.getPathName().equals("current") ? currentPath : paths.get(moveFlag.getPathName());
 
                     // Modify the clicked point and then generate the new path accordingly.
-                    String valuesToEdit = temp.clickPoints.get(moveFlag.pointIndex).getYawVelAcc();
+                    String valuesToEdit = temp.clickPoints.get(moveFlag.getPointIndex()).getYawVelAcc();
                     double[] values = Utils.editWaypointKinematicValues(valuesToEdit);
 
                     if (values != null && values.length == 3) {
-                        temp.clickPoints.get(moveFlag.pointIndex).setYawVelAcc(values[0], values[1], values[2]);
+                        temp.clickPoints.get(moveFlag.getPointIndex()).setAngleVelAcc(values[0], values[1], values[2]);
                         genPath(temp);
                     }
 

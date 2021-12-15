@@ -1,8 +1,10 @@
+import util.BetterArrayList;
+import util.Waypoint;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.*;
-
-import static java.util.Map.entry;
+import java.util.ArrayList;
+import java.util.Collections;
 
 /**
  * @author https://github.com/AtsushiSakai/PythonRobotics/blob/master/PathPlanning/QuinticPolynomialsPlanner/quintic_polynomials_planner.py
@@ -11,47 +13,22 @@ import static java.util.Map.entry;
 public final class MPGen2D {
     private static final double MIN_T = 0.1, MAX_T = 10.0, dt = 0.01; // Seconds
     private static final double max_accel = 12.0; // ft/s^2
-    // private static final double max_jerk = 120.0; // ft/s^3
+    public final PathResults results;
 
-    static final class Results {
-        ArrayList<Double> time, x, y, vel, accel, jerk;
-        BetterArrayList<Double> yaw;
-
-        final Map<Integer, ArrayList<Double>> indexMap;
-
-        Results() {
-            this.time = new ArrayList<>();
-            this.x = new ArrayList<>();
-            this.y = new ArrayList<>();
-            this.yaw = new BetterArrayList<>();
-            this.vel = new ArrayList<>();
-            this.accel = new ArrayList<>();
-            this.jerk = new ArrayList<>();
-
-            this.indexMap = Map.ofEntries(entry(0, this.time), entry(1, this.x), entry(2, this.y), entry(3, this.yaw), entry(4, this.vel),
-                    entry(5, this.accel), entry(6, this.jerk));
-        }
-
-        ArrayList<Double> get(int index) {
-            return indexMap.get(index);
-        }
-    }
-
-    Results results;
-
-    MPGen2D(Waypoint[] waypoints) {
-        this.results = new Results();
+    public MPGen2D(Waypoint[] waypoints) {
+        this.results = new PathResults();
         int timeSpliceIndex = 0;
 
         for (int i = 0; i < waypoints.length - 1; i++) {
-            List<ArrayList<Double>> temp = quinticPolyPlanner(waypoints[i].getX(), waypoints[i].getY(), waypoints[i].getYaw(),
-                    waypoints[i].getV(), waypoints[i].getA(), waypoints[i + 1].getX(), waypoints[i + 1].getY(), waypoints[i + 1].getYaw(),
+            PathResults temp = quinticPolyPlanner(waypoints[i].getX(), waypoints[i].getY(), waypoints[i].getRad(), waypoints[i].getV(),
+                    waypoints[i].getA(), waypoints[i + 1].getX(), waypoints[i + 1].getY(), waypoints[i + 1].getRad(),
                     waypoints[i + 1].getV(), waypoints[i + 1].getA());
 
             // TODO: improve this, it shouldn't just be the removal of a point every waypoint
             if (i >= 1) {
-                for (ArrayList<Double> doubles : temp) {
-                    doubles.remove(0);
+                // noinspection ListRemoveInLoop
+                for (int j = 0; j < temp.size(); j++) {
+                    temp.get(j).remove(0);
                 }
             }
 
@@ -69,21 +46,24 @@ public final class MPGen2D {
             timeSpliceIndex += temp.get(0).size();
         }
 
+        for (Double r : results.getRad()) {
+            results.deg.add(Math.toDegrees(r));
+        }
+
         if (waypoints.length > 1) {
-            results.yaw.setLast(waypoints[waypoints.length - 1].getYaw()); // Fix heading on last point
+            // Fix heading on last point
+            results.deg.setLast(waypoints[waypoints.length - 1].getDeg());
+            results.rad.setLast(waypoints[waypoints.length - 1].getRad());
+
+            results.distance.add(0.0);
+            for (int i = 1; i < results.x.size(); i++) {
+                double xDelta = results.x.get(i) - results.x.get(i - 1);
+                double yDelta = results.y.get(i) - results.y.get(i - 1);
+                results.distance.add(Math.hypot(xDelta, yDelta) + results.distance.get(i - 1));
+            }
         }
 
         // printResults();
-    }
-
-    void printResults() {
-        System.out.printf("%-8s %-17s %-18s %-18s %-18s %-18s %-18s", "Time", "x", "y", "yaw", "vel", "accel", "jerk");
-        System.out.println();
-
-        for (int i = 0; i < results.time.size(); i++) {
-            System.out.printf("%f %.15f %.16f %.16f %.16f %.16f %.16f\n", results.time.get(i), results.x.get(i), results.y.get(i),
-                    Math.toDegrees(results.yaw.get(i)), results.vel.get(i), results.accel.get(i), results.jerk.get(i));
-        }
     }
 
     public static void main(String[] args) {
@@ -95,8 +75,15 @@ public final class MPGen2D {
                 new Waypoint(19.31, 11.03, Math.toRadians(-90.0), 9.0, -11.98),
                 new Waypoint(24.13, 6.35, Math.toRadians(20.0), 0.0, -11.98)};
 
+        Waypoint[] waypoints3 = new Waypoint[]{new Waypoint(0.0, 0.0, 0.0, 0.0, 11.98), new Waypoint(4.0, 4.0, 0.0, 0.0, -11.98)};
+
         MPGen2D test = new MPGen2D(waypoints2);
+        var l_r = test.leftRight(Utils.convertResults(test.results), 2.1);
         test.printResults();
+
+        for (int i = 0; i < l_r.get(0).size(); i++) {
+            System.out.printf("%16.12f %16.12f %.12f\n", l_r.get(0).get(i).getV(), l_r.get(1).get(i).getV(), test.results.roc.get(i));
+        }
     }
 
     /**
@@ -114,72 +101,59 @@ public final class MPGen2D {
      * @return a list of points of the quintic spline between the start and goal points. if the spline could not be found, the list will be
      * empty
      */
-    private static List<ArrayList<Double>> quinticPolyPlanner(double s_x, double s_y, double s_yaw, double s_v, double s_a, double g_x,
-            double g_y, double g_yaw, double g_v, double g_a) {
+    private static PathResults quinticPolyPlanner(double s_x, double s_y, double s_yaw, double s_v, double s_a, double g_x, double g_y,
+            double g_yaw, double g_v, double g_a) {
         // Setup x and y components of magnitudes
         double s_vx = s_v * Math.cos(s_yaw), s_vy = s_v * Math.sin(s_yaw), g_vx = g_v * Math.cos(g_yaw), g_vy = g_v * Math.sin(g_yaw);
         double s_ax = s_a * Math.cos(s_yaw), s_ay = s_a * Math.sin(s_yaw), g_ax = g_a * Math.cos(g_yaw), g_ay = g_a * Math.sin(g_yaw);
 
-        ArrayList<Double> time = new ArrayList<>(), rx = new ArrayList<>(), ry = new ArrayList<>(), r_yaw = new ArrayList<>(), rv =
-                new ArrayList<>(), ra = new ArrayList<>(), rj = new ArrayList<>();
+        PathResults results = new PathResults();
 
-        for (double T = MIN_T; T < MAX_T; T = new BigDecimal(T + MIN_T).setScale(3, RoundingMode.HALF_UP).doubleValue()) {
+        for (double T = MIN_T; T <= MAX_T; T = new BigDecimal(T + MIN_T).setScale(3, RoundingMode.HALF_UP).doubleValue()) {
             QuinticPolynomial xqp = new QuinticPolynomial(s_x, s_vx, s_ax, g_x, g_vx, g_ax, T);
             QuinticPolynomial yqp = new QuinticPolynomial(s_y, s_vy, s_ay, g_y, g_vy, g_ay, T);
 
-            time.clear();
-            rx.clear();
-            ry.clear();
-            r_yaw.clear();
-            rv.clear();
-            ra.clear();
-            rj.clear();
+            results.clear();
 
             for (double t = 0.0; t < T + dt; t = new BigDecimal(t + dt).setScale(3, RoundingMode.HALF_UP).doubleValue()) {
-                time.add(t);
-                rx.add(xqp.calcPoint(t));
-                ry.add(yqp.calcPoint(t));
+                results.time.add(t);
+                results.x.add(xqp.calcPoint(t));
+                results.y.add(yqp.calcPoint(t));
 
                 double vx = xqp.calcFirstDeriv(t), vy = yqp.calcFirstDeriv(t);
                 double v = Math.hypot(vx, vy);
                 double yaw = Math.atan2(vy, vx);
-                rv.add(v);
-                r_yaw.add(yaw);
+                results.vel.add(v);
+                results.rad.add(yaw);
 
-                ra.add(derivativeMag(rv, xqp.calcSecondDeriv(t), yqp.calcSecondDeriv(t)));
-                rj.add(derivativeMag(ra, xqp.calcThirdDeriv(t), yqp.calcThirdDeriv(t)));
+                results.accel.add(derivativeMag(results.vel, xqp.calcSecondDeriv(t), yqp.calcSecondDeriv(t)));
+                results.jerk.add(derivativeMag(results.accel, xqp.calcThirdDeriv(t), yqp.calcThirdDeriv(t)));
+
+                results.roc.add(calcParametricRadOfCurve(xqp, yqp, t));
             }
 
-            ArrayList<Double> absRa = new ArrayList<>(ra.size());
-            for (int i = 0; i < ra.size(); i++) {
-                absRa.add(i, Math.abs(ra.get(i)));
+            ArrayList<Double> absRa = new ArrayList<>(results.accel.size());
+            for (int i = 0; i < results.accel.size(); i++) {
+                absRa.add(i, Math.abs(results.accel.get(i)));
             }
 
             double max_acc = Collections.max(absRa);
             if (max_acc <= max_accel) {
-                // if (Collections.max(absRj) > max_jerk) {
-                //     System.out.println("max jerk violated!");
-                // } else {
-                System.out.println("found valid path");
-                xqp.printCoeffs();
-                yqp.printCoeffs();
-                System.out.printf("max accel=%f, T=%f!\n", max_acc, T);
+                System.out.printf("found valid path: max accel=%f, T=%f!\n", max_acc, T);
                 break;
-                // }
             }
         }
 
-        return Arrays.asList(time, rx, ry, r_yaw, rv, ra, rj);
+        return results;
     }
 
-    /*
-    Calculate the magnitude of the corresponding derivative, with the proper sign
-    + = increasing, - = decreasing
+    /**
+     * Calculate the magnitude of the corresponding derivative, with the proper sign + = increasing, - = decreasing
      */
-    private static double derivativeMag(ArrayList<Double> parent, double dx, double dy) {
+    private static double derivativeMag(BetterArrayList<Double> parent, double dx, double dy) {
         double mag = Math.hypot(dx, dy);
         // If (last - 2nd last) < 0, invert the sign
-        if (parent.size() >= 2 && parent.get(parent.size() - 1) - parent.get(parent.size() - 2) < 0.0) {
+        if (parent.size() >= 2 && parent.getLast() - parent.get2ndLast() < 0.0) {
             mag *= -1;
         }
 
@@ -187,19 +161,40 @@ public final class MPGen2D {
     }
 
     /**
-     * This function generates the left and right paths from a center path and returns those paths. All math is in radians because Java's
-     * math library uses radians for its trigonometric calculations. First, it checks if the original path has more than one point because
-     * you can't calculate a heading from one point only. Then, it calculates the heading between 2 consecutive points in the original path
-     * and stores those values in an array. Next, it sets the last point to the same heading as the previous point so that the ending of the
-     * path is more accurate. Finally, it calculates the new point values (in feet) and returns those paths in the BetterArrayList of
-     * BetterArrayLists.
+     * Positive = turning left, negative = turning right, INFINITY = straight
+     */
+    private static double calcParametricRadOfCurve(QuinticPolynomial xqp, QuinticPolynomial yqp, double t) {
+        double x_prime = xqp.calcFirstDeriv(t), y_prime = yqp.calcFirstDeriv(t);
+        double x_double_prime = xqp.calcSecondDeriv(t), y_double_prime = yqp.calcSecondDeriv(t);
+
+        double denominator = x_prime * y_double_prime - y_prime * x_double_prime;
+
+        if (Utils.absLessThanEps(denominator)) {
+            return Double.POSITIVE_INFINITY;
+        }
+
+        return Math.pow(x_prime * x_prime + y_prime * y_prime, 1.5) / denominator;
+    }
+
+    private void printResults() {
+        System.out.printf("%-9s %-15s %-17s %-16s %-16s %-18s %-19s %-14s\n", "Time", "x", "y", "angle", "vel", "accel", "jerk", "roc");
+
+        for (int i = 0; i < results.time.size(); i++) {
+            System.out.printf("%f %15.12f %15.12f %17.12f %16.12f %16.12f %18.12f %19.12f\n", results.time.get(i), results.x.get(i),
+                    results.y.get(i), results.getDeg().get(i), results.vel.get(i), results.accel.get(i), results.jerk.get(i),
+                    results.roc.get(i));
+        }
+    }
+
+    /**
+     * Generate the left and right paths and velocities and return them
      *
-     * @param points        the original center path to generate the left and right values from (point values are in feet)
-     * @param robotTrkWidth the robot track width (used as the actual width of the robot for simplicity)
+     * @param points        the path to generate the left and right values from
+     * @param robotTrkWidth the robot track width
      *
      * @return A BetterArrayList of the left and right paths (Stored in BetterArrayLists also) for the robot
      */
-    BetterArrayList<BetterArrayList<Waypoint>> leftRight(BetterArrayList<Waypoint> points, double robotTrkWidth) {
+    public BetterArrayList<BetterArrayList<Waypoint>> leftRight(BetterArrayList<Waypoint> points, double robotTrkWidth) {
         BetterArrayList<BetterArrayList<Waypoint>> temp = new BetterArrayList<>();
         temp.add(new BetterArrayList<>(points.size())); // Left
         temp.add(new BetterArrayList<>(points.size())); // Right
@@ -213,10 +208,19 @@ public final class MPGen2D {
             // rightY = trackWidth / 2 * sin(calculatedAngleAtThatIndex - Pi / 2) + centerPathYValueAtThatIndex
             for (int i = 0; i < points.size(); i++) {
                 Waypoint point = points.get(i);
-                temp.get(0).add(i, new Waypoint(robotTrkWidth / 2 * Math.cos(point.getYaw() + Math.PI / 2) + point.getX(),
-                        robotTrkWidth / 2 * Math.sin(point.getYaw() + Math.PI / 2) + point.getY(), point));
-                temp.get(1).add(i, new Waypoint(robotTrkWidth / 2 * Math.cos(point.getYaw() - Math.PI / 2) + point.getX(),
-                        robotTrkWidth / 2 * Math.sin(point.getYaw() - Math.PI / 2) + point.getY(), point));
+                Waypoint leftPoint = new Waypoint(robotTrkWidth / 2 * Math.cos(point.getRad() + Math.PI / 2) + point.getX(),
+                        robotTrkWidth / 2 * Math.sin(point.getRad() + Math.PI / 2) + point.getY(), point);
+                Waypoint rightPoint = new Waypoint(robotTrkWidth / 2 * Math.cos(point.getRad() - Math.PI / 2) + point.getX(),
+                        robotTrkWidth / 2 * Math.sin(point.getRad() - Math.PI / 2) + point.getY(), point);
+
+                // Calculate left and right velocities
+                double omega = point.getV() / this.results.roc.get(i);
+
+                leftPoint.setV(point.getV() - omega * robotTrkWidth / 2.0);
+                rightPoint.setV(point.getV() + omega * robotTrkWidth / 2.0);
+
+                temp.get(0).add(i, leftPoint);
+                temp.get(1).add(i, rightPoint);
             }
         } else if (points.size() == 1) {
             temp.get(0).add(0, new Waypoint(points.get(0)));
