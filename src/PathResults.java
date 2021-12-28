@@ -5,10 +5,10 @@ import java.util.Map;
 import static java.util.Map.entry;
 
 public final class PathResults {
+    final BetterArrayList<Double> rad; // angle in radians
+    final BetterArrayList<Double> deg; // angle in degrees
+    final BetterArrayList<Double> time, x, y, vel, accel, jerk, roc, distance;
     private final Map<Integer, BetterArrayList<Double>> indexMap;
-    BetterArrayList<Double> rad; // angle in radians
-    BetterArrayList<Double> deg; // angle in degrees
-    BetterArrayList<Double> time, x, y, vel, accel, jerk, roc, distance;
 
     PathResults() {
         this.time = new BetterArrayList<>();
@@ -24,6 +24,14 @@ public final class PathResults {
 
         this.indexMap = Map.ofEntries(entry(0, this.time), entry(1, this.x), entry(2, this.y), entry(3, this.rad), entry(4, this.vel),
                 entry(5, this.accel), entry(6, this.jerk), entry(7, this.roc));
+    }
+
+    public BetterArrayList<Double> getVel() {
+        return vel;
+    }
+
+    public BetterArrayList<Double> getRoc() {
+        return roc;
     }
 
     public BetterArrayList<Double> getDistance() {

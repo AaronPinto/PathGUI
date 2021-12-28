@@ -10,12 +10,12 @@ import java.util.Collections;
  * @author https://github.com/AtsushiSakai/PythonRobotics/blob/master/PathPlanning/QuinticPolynomialsPlanner/quintic_polynomials_planner.py
  * Modified by: Aaron Pinto
  */
-public final class MPGen2D {
+public final class PathGen2D {
     private static final double MIN_T = 0.1, MAX_T = 10.0, dt = 0.01; // Seconds
-    private static final double max_accel = 12.0; // ft/s^2
+    private static final double max_accel = 8.0; // ft/s^2
     public final PathResults results;
 
-    public MPGen2D(Waypoint[] waypoints) {
+    public PathGen2D(Waypoint[] waypoints) {
         this.results = new PathResults();
         int timeSpliceIndex = 0;
 
@@ -77,13 +77,18 @@ public final class MPGen2D {
 
         Waypoint[] waypoints3 = new Waypoint[]{new Waypoint(0.0, 0.0, 0.0, 0.0, 11.98), new Waypoint(4.0, 4.0, 0.0, 0.0, -11.98)};
 
-        MPGen2D test = new MPGen2D(waypoints2);
-        var l_r = test.leftRight(Utils.convertResults(test.results), 2.1);
+        Waypoint[] waypoints4 = new Waypoint[]{new Waypoint(1.0, 24.0, 0.0, 0.0, 11.99), new Waypoint(2.0, 24.0, 0.0, 4.35, 11.99),
+                new Waypoint(7.0, 19.0, Math.toRadians(-90.0), 4.35, -11.99), new Waypoint(7.0, 18.0, Math.toRadians(-90.0), 0.0, -11.99),};
+
+        Waypoint[] waypoints5 = new Waypoint[]{new Waypoint(0.0, 0.0, 0.0, 0.0, 7.98), new Waypoint(1.0, 0.0, 0.0, 3.9, 7.98)};
+
+        PathGen2D test = new PathGen2D(waypoints4);
+        var l_r = test.leftRight(Utils.convertResults(test.results), 1.744792);
         test.printResults();
 
-        for (int i = 0; i < l_r.get(0).size(); i++) {
-            System.out.printf("%16.12f %16.12f %.12f\n", l_r.get(0).get(i).getV(), l_r.get(1).get(i).getV(), test.results.roc.get(i));
-        }
+        // for (int i = 0; i < l_r.get(0).size(); i++) {
+        // System.out.printf("%16.12f %16.12f %.12f\n", l_r.get(0).get(i).getV(), l_r.get(1).get(i).getV(), test.results.roc.get(i));
+        // }
     }
 
     /**
@@ -109,6 +114,7 @@ public final class MPGen2D {
 
         PathResults results = new PathResults();
 
+        // TODO: check that the velocity doesn't saturate going around a corner, left and right wheel speeds
         for (double T = MIN_T; T <= MAX_T; T = new BigDecimal(T + MIN_T).setScale(3, RoundingMode.HALF_UP).doubleValue()) {
             QuinticPolynomial xqp = new QuinticPolynomial(s_x, s_vx, s_ax, g_x, g_vx, g_ax, T);
             QuinticPolynomial yqp = new QuinticPolynomial(s_y, s_vy, s_ay, g_y, g_vy, g_ay, T);
@@ -140,8 +146,13 @@ public final class MPGen2D {
             double max_acc = Collections.max(absRa);
             if (max_acc <= max_accel) {
                 System.out.printf("found valid path: max accel=%f, T=%f!\n", max_acc, T);
+                // xqp.printCoeffs();
+                // yqp.printCoeffs();
                 break;
-            }
+            } /*else {
+                System.out.printf("Time=%f\n", T);
+                xqp.printCoeffs();
+            }*/
         }
 
         return results;

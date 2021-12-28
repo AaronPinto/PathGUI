@@ -1,6 +1,10 @@
 package util;
 
-public final class Waypoint {
+import java.io.Serializable;
+
+public final class Waypoint implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private double x;
     private double y;
     private double rad; // radians
@@ -26,10 +30,17 @@ public final class Waypoint {
     public Waypoint(double x, double y, double rad, double v, double a) {
         this.x = x;
         this.y = y;
-        this.rad = rad;
         this.v = v;
         this.a = a;
-        this.deg = Math.toDegrees(rad);
+
+        if (Math.abs(rad) > 2.0 * Math.PI) { // Assume degrees if >2PI, but alert user
+            this.rad = Math.toRadians(rad);
+            this.deg = rad;
+            throw new RuntimeException("Processed input angle as degrees!");
+        } else {
+            this.rad = rad;
+            this.deg = Math.toDegrees(rad);
+        }
     }
 
     @Override
@@ -48,13 +59,13 @@ public final class Waypoint {
      */
     @Override
     public String toString() {
-        return x + ", " + y + ", " + deg + ", " + v + ", " + a;
+        return x + ", " + y + ", Math.toRadians(" + deg + "), " + v + ", " + a;
     }
 
     /**
      * @return a String with the yaw (deg), velocity and accel
      */
-    public String getYawVelAcc() {
+    public String getDegVelAcc() {
         return deg + ", " + v + ", " + a;
     }
 
@@ -75,18 +86,11 @@ public final class Waypoint {
      * @param v   the new velocity
      * @param a   the new acceleration
      */
-    public void setAngleVelAcc(double deg, double v, double a) {
+    public void setDegVelAcc(double deg, double v, double a) {
         this.rad = Math.toRadians(deg);
         this.deg = deg;
         this.v = v;
         this.a = a;
-    }
-
-    /**
-     * @return the angle in radians
-     */
-    public double getRad() {
-        return rad;
     }
 
     /**
@@ -98,12 +102,24 @@ public final class Waypoint {
         this.y = y;
     }
 
+    public void incrementPosition(double x_inc, double y_inc) {
+        this.x += x_inc;
+        this.y += y_inc;
+    }
+
     public double getX() {
         return x;
     }
 
     public double getY() {
         return y;
+    }
+
+    /**
+     * @return the angle in radians
+     */
+    public double getRad() {
+        return rad;
     }
 
     public void setRad(double rad) {
@@ -115,11 +131,11 @@ public final class Waypoint {
         return v;
     }
 
-    public double getA() {
-        return a;
-    }
-
     public void setV(double v) {
         this.v = v;
+    }
+
+    public double getA() {
+        return a;
     }
 }

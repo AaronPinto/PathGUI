@@ -8,25 +8,25 @@ import java.util.LinkedHashMap;
 import java.util.stream.Collectors;
 
 public final class Utils {
-    private static final double kEpsilon = 1e-9;
+    public static final double kEpsilon = 1e-9;
 
     /**
-     * This function formats and appends all the values in all the paths into proper 2D array syntax and then returns that String.
+     * This function formats and appends all the values in all the paths into proper array syntax and then returns that String.
      *
      * @return a String that contains all the values for all the paths
      */
-    static String output2DArray(Path currentPath, LinkedHashMap<String, Path> paths) {
+    static String outputWaypointArray(Path currentPath, LinkedHashMap<String, Path> paths) {
         StringBuilder output = new StringBuilder();
-        output.append("public static Object[][] currentPath = new Object[][]{\n");
+        output.append("public static Waypoint[] currentPath = new Waypoint[]{\n");
 
         outputPath(output, currentPath);
 
         paths.forEach((key, value) -> {
-            output.append(String.format("public static Object[][] %s = new Object[][]{\n", key));
+            output.append("public static Waypoint[] ").append(key).append(" = new Waypoint[]{\n");
             outputPath(output, value);
         });
 
-        System.out.println("2D Array output: " + output);
+        System.out.println("Array output: " + output);
         return output.toString();
     }
 
@@ -37,7 +37,7 @@ public final class Utils {
      * @param value  the path to parse, format and get the values from.
      */
     static void outputPath(StringBuilder output, Path value) {
-        output.append(value.clickPoints.stream().map(clickPoint -> "{" + clickPoint + "},\n").collect(Collectors.joining()));
+        output.append(value.clickPoints.stream().map(clickPoint -> "new Waypoint(" + clickPoint + "),\n").collect(Collectors.joining()));
         output.append("};\n");
     }
 
@@ -58,14 +58,10 @@ public final class Utils {
         BetterArrayList<Waypoint> temp = new BetterArrayList<>();
 
         for (int i = 0; i < results.time.size(); i++) {
-            temp.add(new Waypoint(results.x.get(i), results.y.get(i), results.getRad().get(i), results.vel.get(i), results.accel.get(i)));
+            temp.add(new Waypoint(results.x.get(i), results.y.get(i), results.rad.get(i), results.vel.get(i), results.accel.get(i)));
         }
 
         return temp;
-    }
-
-    public static boolean absLessThanEps(double x) {
-        return Math.abs(x) < kEpsilon;
     }
 
     /**
@@ -113,5 +109,9 @@ public final class Utils {
         }
 
         return null;
+    }
+
+    public static boolean absLessThanEps(double x) {
+        return Math.abs(x) < kEpsilon;
     }
 }

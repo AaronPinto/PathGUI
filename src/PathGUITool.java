@@ -9,14 +9,10 @@ import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Transferable;
 import java.awt.event.*;
 import java.awt.geom.Line2D;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.util.Calendar;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Scanner;
 
 /**
  * The program takes the mouse position on the field drawn in the GUI and then based off of that, when the mouse button is clicked, it
@@ -25,21 +21,21 @@ import java.util.Scanner;
  *
  * @author Aaron Pinto
  * @see FieldGenerator
- * @see MPGen2D
+ * @see PathGen2D
  */
 public final class PathGUITool extends JPanel implements ClipboardOwner {
     // An object of this class, used for the Ctrl + C code
     private static PathGUITool fig;
 
+    private final double borderSize = 30;
+    private final FieldGenerator fieldGen = new FieldGenerator();
     // The JFrame for this GUI. It actually displays the window
     private final JFrame g = new JFrame("Path GUI Tool");
     // LinkedHashMap to store the name and path for all previous paths
     private final LinkedHashMap<String, Path> paths = new LinkedHashMap<>();
     // Path for storing the Ctrl + Z'd points
     private final Path redoBuffer = new Path();
-    private final FieldGenerator fieldGen = new FieldGenerator();
-    private final double borderSize = 30;
-
+    private final Path currentPath = new Path();
     /**
      * doubles for storing important values, xScale and yScale are the values for pixels per foot for each axis, respectively, yTickYMax and
      * Min are the max and min values of the y-axis in pixels, rectWidth and Height are the width and height of the field border in pixels,
@@ -48,8 +44,6 @@ public final class PathGUITool extends JPanel implements ClipboardOwner {
     private double xScale, yScale, rectWidth, rectHeight, ppiX, ppiY;
     // Height is an integer which stores the height of this panel in pixels
     private int height;
-    // A BetterArrayList of PathSegments which stores the values of the current path
-    private Path currentPath = new Path();
     // A class to store the values necessary to move a clicked point in paths
     private PointMarker moveFlag = PointMarker.DEFAULT;
 
@@ -124,39 +118,6 @@ public final class PathGUITool extends JPanel implements ClipboardOwner {
     }
 
     /**
-     * This function saves the points in each path to a file in proper Java 2D array syntax. It checks if any paths are not empty and if so,
-     * it saves those points to a file, otherwise it lets the user know that they cannot save nothing.
-     */
-    private void save() {
-        if (!paths.isEmpty() || !currentPath.isEmpty()) {
-            try {
-                Calendar c = Calendar.getInstance();
-                JFileChooser jfc = new JFileChooser();
-                jfc.setFileFilter(new FileNameExtensionFilter("Text Files", "txt", "TXT"));
-                jfc.setSelectedFile(new File(String.format("%tB%te%tY-%tH%tM%tS.txt", c, c, c, c, c, c)));
-
-                if (jfc.showSaveDialog(g) == JFileChooser.APPROVE_OPTION) {
-                    if (!jfc.getSelectedFile().getAbsolutePath().endsWith(".txt") &&
-                            !jfc.getSelectedFile().getAbsolutePath().endsWith(".TXT")) {
-                        jfc.setSelectedFile(new File(jfc.getSelectedFile().getAbsolutePath() + ".txt"));
-                    }
-
-                    FileWriter fw = new FileWriter(jfc.getSelectedFile().getAbsolutePath());
-                    fw.write(Utils.output2DArray(currentPath, paths));
-                    fw.flush();
-                    fw.close();
-
-                    JOptionPane.showConfirmDialog(g, "Points Saved Successfully!", "Points Saver", JOptionPane.DEFAULT_OPTION);
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        } else {
-            JOptionPane.showMessageDialog(g, "You cannot save nothing!", "Points Saver", JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    /**
      * This function removes the most recent update to the current path and adds it to a buffer. It checks if the current path is not empty
      * then removes any empty path segments from (ex.) incomplete mode switching, then checks if the new most recent path segment has any
      * path points. If this is the first time undo has been called since the last path update, or if the buffer is empty, it adds a new path
@@ -167,7 +128,7 @@ public final class PathGUITool extends JPanel implements ClipboardOwner {
      * previous mode to Undo.
      */
     private void undo() {
-        if (!currentPath.isEmpty()) {
+        if (currentPath.isNotEmpty()) {
             redoBuffer.clickPoints.add(currentPath.clickPoints.removeLast());
             genPath(currentPath);
             outputRedoBuffer();
@@ -187,7 +148,7 @@ public final class PathGUITool extends JPanel implements ClipboardOwner {
      * repaints the GUI and sets the previous mode to Redo.
      */
     private void redo() {
-        if (!redoBuffer.isEmpty()) {
+        if (redoBuffer.isNotEmpty()) {
             outputRedoBuffer();
             currentPath.clickPoints.add(redoBuffer.clickPoints.removeLast());
             outputRedoBuffer();
@@ -199,30 +160,62 @@ public final class PathGUITool extends JPanel implements ClipboardOwner {
     }
 
     /**
-     * This function copies all the points in all the paths to your clipboard in proper Java 2D array syntax. You can paste these points
-     * wherever you please, except for in this program.
-     */
-    private void copy() {
-        Clipboard c = Toolkit.getDefaultToolkit().getSystemClipboard();
-        c.setContents(new StringSelection(Utils.output2DArray(currentPath, paths)), fig);
-
-        JOptionPane.showConfirmDialog(g, "Waypoints copied to clipboard!", "Points Copier", JOptionPane.DEFAULT_OPTION);
-    }
-
-    /**
      * This function clears all the paths and essentially resets the program, if the user says yes.
      */
     private void clear() {
-        if (!currentPath.isEmpty() || !paths.isEmpty()) {
+        if (currentPath.isNotEmpty() || !paths.isEmpty()) {
             if (JOptionPane.showConfirmDialog(g, "Are you sure you want to clear everything?", "Window Clearer",
                     JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
                 currentPath.clear();
                 paths.clear();
                 redoBuffer.clear();
+                moveFlag = PointMarker.DEFAULT;
                 fig.repaint();
             }
         } else {
             JOptionPane.showMessageDialog(g, "You cannot clear nothing!", "Window Clearer", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    /**
+     * This function copies all the points in all the paths to your clipboard in proper Java 2D array syntax. You can paste these points
+     * wherever you please, except for in this program.
+     */
+    private void copy() {
+        Clipboard c = Toolkit.getDefaultToolkit().getSystemClipboard();
+        c.setContents(new StringSelection(Utils.outputWaypointArray(currentPath, paths)), fig);
+
+        JOptionPane.showConfirmDialog(g, "Waypoints copied to clipboard!", "Points Copier", JOptionPane.DEFAULT_OPTION);
+    }
+
+    /**
+     * This function saves the points in each path to a file in proper Java 2D array syntax. It checks if any paths are not empty and if so,
+     * it saves those points to a file, otherwise it lets the user know that they cannot save nothing.
+     */
+    private void save() {
+        if (currentPath.isNotEmpty() || !paths.isEmpty()) {
+            Calendar c = Calendar.getInstance();
+            JFileChooser jfc = new JFileChooser();
+            jfc.setFileFilter(new FileNameExtensionFilter("Text Files", "txt", "TXT"));
+            jfc.setSelectedFile(new File(String.format("%tB%te%tY-%tH%tM%tS.txt", c, c, c, c, c, c)));
+
+            if (jfc.showSaveDialog(g) == JFileChooser.APPROVE_OPTION) {
+                String fileAbsPath = jfc.getSelectedFile().getAbsolutePath();
+                if (!fileAbsPath.endsWith(".txt") && !fileAbsPath.endsWith(".TXT")) {
+                    fileAbsPath += ".txt";
+                }
+
+                try (var oos = new ObjectOutputStream(new FileOutputStream(fileAbsPath))) {
+                    oos.writeObject(currentPath);
+                    oos.writeObject(paths);
+                    oos.flush();
+                    JOptionPane.showConfirmDialog(g, "Points Saved Successfully!", "Points Saver", JOptionPane.DEFAULT_OPTION);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        } else {
+            JOptionPane.showMessageDialog(g, "You cannot save nothing!", "Points Saver", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -232,55 +225,27 @@ public final class PathGUITool extends JPanel implements ClipboardOwner {
      */
     private void open() {
         JFileChooser jfc = new JFileChooser();
-        jfc.setFileFilter(new FileNameExtensionFilter("Text or Java Files", "txt", "TXT", "java"));
+        jfc.setFileFilter(new FileNameExtensionFilter("Text Files", "txt", "TXT"));
 
         if (jfc.showOpenDialog(g) == JFileChooser.APPROVE_OPTION) {
-            String fAP = jfc.getSelectedFile().getAbsolutePath(); // File absolute path
+            String fileAbsPath = jfc.getSelectedFile().getAbsolutePath();
 
-            if (fAP.endsWith(".txt") || fAP.endsWith(".TXT") || fAP.endsWith(".java")) {
-                try {
-                    Scanner fileReader = new Scanner(jfc.getSelectedFile());
-                    addToPathsAndClear(); // If there are already points in the current path, add it to paths and clear the current path
+            if (fileAbsPath.endsWith(".txt") || fileAbsPath.endsWith(".TXT")) {
+                try (var ois = new ObjectInputStream(new FileInputStream(jfc.getSelectedFile()))) {
+                    addToPathsAndClear(currentPath); // Handle if there are already points in the current path
 
-                    while (fileReader.hasNextLine()) {
-                        String s = fileReader.nextLine();
-                        // Opening syntax line
-                        if (s.contains("Object[][]") && s.contains("= new Object[][]{")) {
-                            if (!currentPath.isEmpty()) {
-                                // Every new 2D array, check the previous one to see if it was valid
-                                genPath(currentPath);
-                                addToPathsAndClear();
-                            }
+                    addToPathsAndClear((Path) ois.readObject()); // Read the saved current path
 
-                            continue;
-                        }
-                        // Get rid of syntax and just keep values.
-                        s = s.replaceAll("\\{", " ").replaceAll("},", " ").replaceAll("}", " ").replaceAll(";", " ");
-                        s = s.trim();
+                    var tempPaths = (LinkedHashMap<String, Path>) ois.readObject(); // Read the saved previous paths
+                    tempPaths.values().forEach(this::addToPathsAndClear);
 
-                        String[] o = s.split(", ");
-                        // This line must contain point values
-                        if (o.length > 1) {
-                            currentPath.clickPoints.add(new Waypoint(Double.parseDouble(o[0]), Double.parseDouble(o[1]),
-                                    Math.toRadians(Double.parseDouble(o[2])), Double.parseDouble(o[3]), Double.parseDouble(o[4])));
-                        }
-                    }
-
-                    fileReader.close();
                     System.out.println("File imported successfully!");
-
                     JOptionPane.showMessageDialog(g, "File imported successfully!", "File Importer", JOptionPane.INFORMATION_MESSAGE);
                 } catch (FileNotFoundException ex) {
                     System.err.println("The file has magically disappeared!");
                 } catch (Exception ex) {
                     System.err.println("Please format the data correctly!");
-
-                    JOptionPane.showMessageDialog(g, "You cannot import this path as it is!", "File Importer", JOptionPane.ERROR_MESSAGE);
-                    currentPath.clear();
-                } finally {
-                    // Add last imported path to paths and clear the current path.
-                    genPath(currentPath);
-                    addToPathsAndClear();
+                    JOptionPane.showMessageDialog(g, "You cannot import this path as is!", "File Importer", JOptionPane.ERROR_MESSAGE);
                 }
             }
         }
@@ -294,10 +259,10 @@ public final class PathGUITool extends JPanel implements ClipboardOwner {
     /**
      * This function adds the current path to the LinkedHashMap paths and then clears the currentPath, if the currentPath isn't empty.
      */
-    private void addToPathsAndClear() {
-        if (!currentPath.isEmpty()) {
-            paths.put(String.format("path%d", paths.size() + 1), currentPath);
-            currentPath = new Path();
+    private void addToPathsAndClear(Path path) {
+        if (path.isNotEmpty()) {
+            paths.put(String.format("path%d", paths.size() + 1), new Path(path));
+            path.clear();
             fig.repaint();
         }
     }
@@ -364,9 +329,9 @@ public final class PathGUITool extends JPanel implements ClipboardOwner {
      */
     private void genPath(Path path) {
         // The path generator object that also stores the points of the generator path
-        MPGen2D pathGen = new MPGen2D(Utils.convertPointArray(path.clickPoints));
+        PathGen2D pathGen = new PathGen2D(Utils.convertPointArray(path.clickPoints));
         BetterArrayList<Waypoint> temp = Utils.convertResults(pathGen.results);
-        BetterArrayList<BetterArrayList<Waypoint>> lAndR = pathGen.leftRight(temp, 24.0889 / 12.0);
+        var lAndR = pathGen.leftRight(temp, 1.744792);
 
         path.pathPoints = temp;
         path.leftPoints = lAndR.get(0);
@@ -438,8 +403,8 @@ public final class PathGUITool extends JPanel implements ClipboardOwner {
                 redo();
             } else if (e.getActionCommand().equals("Copy Points (Ctrl + C)")) {
                 copy();
-            } else if (e.getActionCommand().equals("New Path (Ctrl + N)") && !currentPath.isEmpty()) {
-                addToPathsAndClear();
+            } else if (e.getActionCommand().equals("New Path (Ctrl + N)") && currentPath.isNotEmpty()) {
+                addToPathsAndClear(currentPath);
             } else if (e.getActionCommand().equals("Open (Ctrl + O)")) {
                 open();
             } else if (e.getActionCommand().equals("Save (Ctrl + S)")) {
@@ -470,8 +435,8 @@ public final class PathGUITool extends JPanel implements ClipboardOwner {
                     redo();
                 } else if (e.getExtendedKeyCode() == 67) { // CTRL + C
                     copy();
-                } else if (e.getExtendedKeyCode() == 78 && !currentPath.isEmpty()) { // CTRL + N
-                    addToPathsAndClear();
+                } else if (e.getExtendedKeyCode() == 78 && currentPath.isNotEmpty()) { // CTRL + N
+                    addToPathsAndClear(currentPath);
                 } else if (e.getExtendedKeyCode() == 79) { // CTRL + O
                     open();
                 } else if (e.getExtendedKeyCode() == 83) { // CTRL + S
@@ -479,6 +444,27 @@ public final class PathGUITool extends JPanel implements ClipboardOwner {
                 } else if (e.getExtendedKeyCode() == 65) { // CTRL + A
                     clear();
                 }
+            }
+
+            if (!moveFlag.equals(PointMarker.DEFAULT)) {
+                double x_inc = 0.0, y_inc = 0.0;
+
+                if (e.getExtendedKeyCode() == 38) { // Up
+                    y_inc = 1.0 / ppiY / 12.0;
+                } else if (e.getExtendedKeyCode() == 39) { // Right
+                    x_inc = 1.0 / ppiX / 12.0;
+                } else if (e.getExtendedKeyCode() == 37) { // Left
+                    x_inc = -1.0 / ppiX / 12.0;
+                } else if (e.getExtendedKeyCode() == 40) { // Down
+                    y_inc = -1.0 / ppiY / 12.0;
+                }
+
+                Path temp = moveFlag.getPathName().equals("current") ? currentPath : paths.get(moveFlag.getPathName());
+
+                temp.clickPoints.get(moveFlag.getPointIndex()).incrementPosition(x_inc, y_inc);
+                genPath(temp);
+
+                fig.repaint();
             }
         }
     }
@@ -498,7 +484,7 @@ public final class PathGUITool extends JPanel implements ClipboardOwner {
          */
         @Override
         public void windowClosing(WindowEvent e) {
-            if (!paths.isEmpty() || !currentPath.isEmpty()) {
+            if (!paths.isEmpty() || currentPath.isNotEmpty()) {
                 int response = JOptionPane.showConfirmDialog(g, "Do you want to save your points?", "Point Saver",
                         JOptionPane.YES_NO_CANCEL_OPTION);
 
@@ -572,11 +558,11 @@ public final class PathGUITool extends JPanel implements ClipboardOwner {
                     Path temp = moveFlag.getPathName().equals("current") ? currentPath : paths.get(moveFlag.getPathName());
 
                     // Modify the clicked point and then generate the new path accordingly.
-                    String valuesToEdit = temp.clickPoints.get(moveFlag.getPointIndex()).getYawVelAcc();
+                    String valuesToEdit = temp.clickPoints.get(moveFlag.getPointIndex()).getDegVelAcc();
                     double[] values = Utils.editWaypointKinematicValues(valuesToEdit);
 
                     if (values != null && values.length == 3) {
-                        temp.clickPoints.get(moveFlag.getPointIndex()).setAngleVelAcc(values[0], values[1], values[2]);
+                        temp.clickPoints.get(moveFlag.getPointIndex()).setDegVelAcc(values[0], values[1], values[2]);
                         genPath(temp);
                     }
 

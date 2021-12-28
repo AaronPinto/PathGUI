@@ -24,6 +24,15 @@ public final class BetterArrayList<E> extends ArrayList<E> {
     public BetterArrayList() {
     }
 
+    public BetterArrayList(BetterArrayList<E> other) {
+        super(other);
+    }
+
+    @Override
+    public String toString() {
+        return super.toString();
+    }
+
     /**
      * Removes and returns the last element in this ArrayList
      *
