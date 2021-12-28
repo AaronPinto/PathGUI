@@ -1,4 +1,7 @@
-import util.*;
+import util.FieldGenerator;
+import util.Path;
+import util.PointMarker;
+import util.Waypoint;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -330,10 +333,9 @@ public final class PathGUITool extends JPanel implements ClipboardOwner {
     private void genPath(Path path) {
         // The path generator object that also stores the points of the generator path
         PathGen2D pathGen = new PathGen2D(Utils.convertPointArray(path.clickPoints));
-        BetterArrayList<Waypoint> temp = Utils.convertResults(pathGen.results);
-        var lAndR = pathGen.leftRight(temp, 1.744792);
+        var lAndR = pathGen.leftRight(1.744792);
 
-        path.pathPoints = temp;
+        path.pathPoints = Utils.convertResults(pathGen.results);
         path.leftPoints = lAndR.get(0);
         path.rightPoints = lAndR.get(1);
     }

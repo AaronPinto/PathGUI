@@ -58,7 +58,7 @@ public final class Utils {
         BetterArrayList<Waypoint> temp = new BetterArrayList<>();
 
         for (int i = 0; i < results.time.size(); i++) {
-            temp.add(new Waypoint(results.x.get(i), results.y.get(i), results.rad.get(i), results.vel.get(i), results.accel.get(i)));
+            temp.add(new Waypoint(results.x.get(i), results.y.get(i), results.rad.get(i), results.vel.get(i), results.acc.get(i)));
         }
 
         return temp;

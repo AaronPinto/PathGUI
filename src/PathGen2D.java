@@ -11,7 +11,7 @@ import java.util.Collections;
  * Modified by: Aaron Pinto
  */
 public final class PathGen2D {
-    private static final double MIN_T = 0.1, MAX_T = 10.0, dt = 0.01; // Seconds
+    private static final double MIN_T = 0.1, MAX_T = 10.0, POLY_D_T = 0.01, POINT_D_T = 0.01; // Seconds
     private static final double max_accel = 8.0; // ft/s^2
     public final PathResults results;
 
@@ -67,23 +67,22 @@ public final class PathGen2D {
     }
 
     public static void main(String[] args) {
-        Waypoint[] waypoints1 = new Waypoint[]{new Waypoint(0.0, 0.0, 0.0, 0.0, 0.0), new Waypoint(1.5, 0.0, 0.0, 5.73, 11.98),
-                new Waypoint(28.5, -15.0, 0.0, 5.73, -11.98), new Waypoint(30.0, -15.0, 0.0, 0.0, 0.0)};
+        Waypoint[] waypoints1 = new Waypoint[]{new Waypoint(0.0, 0.0, 0.0, 0.0, 0.0), new Waypoint(1.5, 0.0, 0.0, 5.7, 12.0),
+                new Waypoint(28.5, -15.0, 0.0, 5.7, -12.0), new Waypoint(30.0, -15.0, 0.0, 0.0, 0.0)};
 
-        Waypoint[] waypoints2 = new Waypoint[]{new Waypoint(0.0, 23.14, 0.0, 0.0, 11.98),
-                new Waypoint(19.31, 16.55, Math.toRadians(-90.0), 12.0, 11.98),
-                new Waypoint(19.31, 11.03, Math.toRadians(-90.0), 9.0, -11.98),
-                new Waypoint(24.13, 6.35, Math.toRadians(20.0), 0.0, -11.98)};
+        Waypoint[] waypoints2 = new Waypoint[]{new Waypoint(0.0, 23.14, 0.0, 0.0, 12.0),
+                new Waypoint(19.31, 16.55, Math.toRadians(-90.0), 12.0, 12.0),
+                new Waypoint(19.31, 11.03, Math.toRadians(-90.0), 9.0, -12.0), new Waypoint(24.13, 6.35, Math.toRadians(20.0), 0.0, -12.0)};
 
-        Waypoint[] waypoints3 = new Waypoint[]{new Waypoint(0.0, 0.0, 0.0, 0.0, 11.98), new Waypoint(4.0, 4.0, 0.0, 0.0, -11.98)};
+        Waypoint[] waypoints3 = new Waypoint[]{new Waypoint(0.0, 0.0, 0.0, 0.0, 12.0), new Waypoint(4.0, 4.0, 0.0, 0.0, -12.0)};
 
-        Waypoint[] waypoints4 = new Waypoint[]{new Waypoint(1.0, 24.0, 0.0, 0.0, 11.99), new Waypoint(2.0, 24.0, 0.0, 4.35, 11.99),
-                new Waypoint(7.0, 19.0, Math.toRadians(-90.0), 4.35, -11.99), new Waypoint(7.0, 18.0, Math.toRadians(-90.0), 0.0, -11.99),};
+        Waypoint[] waypoints4 = new Waypoint[]{new Waypoint(1.0, 24.0, 0.0, 0.0, 12.0), new Waypoint(2.0, 24.0, 0.0, 4.4, 12.0),
+                new Waypoint(7.0, 19.0, Math.toRadians(-90.0), 4.4, -12.0), new Waypoint(7.0, 18.0, Math.toRadians(-90.0), 0.0, -12.0)};
 
-        Waypoint[] waypoints5 = new Waypoint[]{new Waypoint(0.0, 0.0, 0.0, 0.0, 7.98), new Waypoint(1.0, 0.0, 0.0, 3.9, 7.98)};
+        Waypoint[] waypoints5 = new Waypoint[]{new Waypoint(0.0, 0.0, 0.0, 0.0, 8.0), new Waypoint(1.0, 0.0, 0.0, 4.0, 8.0)};
 
-        PathGen2D test = new PathGen2D(waypoints4);
-        var l_r = test.leftRight(Utils.convertResults(test.results), 1.744792);
+        PathGen2D test = new PathGen2D(waypoints5);
+        var l_r = test.leftRight(1.744792);
         test.printResults();
 
         // for (int i = 0; i < l_r.get(0).size(); i++) {
@@ -115,13 +114,13 @@ public final class PathGen2D {
         PathResults results = new PathResults();
 
         // TODO: check that the velocity doesn't saturate going around a corner, left and right wheel speeds
-        for (double T = MIN_T; T <= MAX_T; T = new BigDecimal(T + MIN_T).setScale(3, RoundingMode.HALF_UP).doubleValue()) {
+        for (double T = MIN_T; T <= MAX_T; T = new BigDecimal(T + POLY_D_T).setScale(4, RoundingMode.HALF_UP).doubleValue()) {
             QuinticPolynomial xqp = new QuinticPolynomial(s_x, s_vx, s_ax, g_x, g_vx, g_ax, T);
             QuinticPolynomial yqp = new QuinticPolynomial(s_y, s_vy, s_ay, g_y, g_vy, g_ay, T);
 
             results.clear();
 
-            for (double t = 0.0; t < T + dt; t = new BigDecimal(t + dt).setScale(3, RoundingMode.HALF_UP).doubleValue()) {
+            for (double t = 0.0; t < T + POLY_D_T; t = new BigDecimal(t + POINT_D_T).setScale(3, RoundingMode.HALF_UP).doubleValue()) {
                 results.time.add(t);
                 results.x.add(xqp.calcPoint(t));
                 results.y.add(yqp.calcPoint(t));
@@ -132,15 +131,18 @@ public final class PathGen2D {
                 results.vel.add(v);
                 results.rad.add(yaw);
 
-                results.accel.add(derivativeMag(results.vel, xqp.calcSecondDeriv(t), yqp.calcSecondDeriv(t)));
-                results.jerk.add(derivativeMag(results.accel, xqp.calcThirdDeriv(t), yqp.calcThirdDeriv(t)));
+                results.acc.add(alignedDerivative(yaw, xqp.calcSecondDeriv(t), yqp.calcSecondDeriv(t)));
+                results.jerk.add(alignedDerivative(yaw, xqp.calcThirdDeriv(t), yqp.calcThirdDeriv(t)));
 
-                results.roc.add(calcParametricRadOfCurve(xqp, yqp, t));
+                double roc = calcParametricRadOfCurve(xqp, yqp, t);
+                results.roc.add(roc);
+
+                results.omega.add(v / roc);
             }
 
-            ArrayList<Double> absRa = new ArrayList<>(results.accel.size());
-            for (int i = 0; i < results.accel.size(); i++) {
-                absRa.add(i, Math.abs(results.accel.get(i)));
+            ArrayList<Double> absRa = new ArrayList<>(results.acc.size());
+            for (int i = 0; i < results.acc.size(); i++) {
+                absRa.add(i, Math.abs(results.acc.get(i)));
             }
 
             double max_acc = Collections.max(absRa);
@@ -159,16 +161,13 @@ public final class PathGen2D {
     }
 
     /**
-     * Calculate the magnitude of the corresponding derivative, with the proper sign + = increasing, - = decreasing
+     * Calculate the magnitude of the corresponding derivative in the same direction as velocity, with the proper sign + = increasing, - =
+     * decreasing
      */
-    private static double derivativeMag(BetterArrayList<Double> parent, double dx, double dy) {
-        double mag = Math.hypot(dx, dy);
-        // If (last - 2nd last) < 0, invert the sign
-        if (parent.size() >= 2 && parent.getLast() - parent.get2ndLast() < 0.0) {
-            mag *= -1;
-        }
+    private static double alignedDerivative(double alignYaw, double dx, double dy) {
+        double cosDelta = Math.cos(Math.atan2(dy, dx) - alignYaw);
 
-        return mag;
+        return Math.hypot(dx, dy) * cosDelta;
     }
 
     /**
@@ -188,55 +187,54 @@ public final class PathGen2D {
     }
 
     private void printResults() {
-        System.out.printf("%-9s %-15s %-17s %-16s %-16s %-18s %-19s %-14s\n", "Time", "x", "y", "angle", "vel", "accel", "jerk", "roc");
+        System.out.printf("%-9s %-17s %-17s %-16s %-17s %-18s %-19s %-16s %-16s\n", "Time", "x", "y", "angle", "vel", "accel", "jerk",
+                "roc", "omega");
 
         for (int i = 0; i < results.time.size(); i++) {
-            System.out.printf("%f %15.12f %15.12f %17.12f %16.12f %16.12f %18.12f %19.12f\n", results.time.get(i), results.x.get(i),
-                    results.y.get(i), results.getDeg().get(i), results.vel.get(i), results.accel.get(i), results.jerk.get(i),
-                    results.roc.get(i));
+            System.out.printf("%f %15.12f %17.12f %17.12f %16.12f %17.12f %18.12f %19.12f %16.12f\n", results.time.get(i), results.x.get(i),
+                    results.y.get(i), results.getDeg().get(i), results.vel.get(i), results.acc.get(i), results.jerk.get(i),
+                    results.roc.get(i), results.omega.get(i));
         }
     }
 
     /**
      * Generate the left and right paths and velocities and return them
      *
-     * @param points        the path to generate the left and right values from
      * @param robotTrkWidth the robot track width
      *
      * @return A BetterArrayList of the left and right paths (Stored in BetterArrayLists also) for the robot
      */
-    public BetterArrayList<BetterArrayList<Waypoint>> leftRight(BetterArrayList<Waypoint> points, double robotTrkWidth) {
-        BetterArrayList<BetterArrayList<Waypoint>> temp = new BetterArrayList<>();
-        temp.add(new BetterArrayList<>(points.size())); // Left
-        temp.add(new BetterArrayList<>(points.size())); // Right
+    public BetterArrayList<BetterArrayList<Waypoint>> leftRight(double robotTrkWidth) {
+        BetterArrayList<BetterArrayList<Waypoint>> res = new BetterArrayList<>();
+        res.add(new BetterArrayList<>(results.time.size())); // Left
+        res.add(new BetterArrayList<>(results.time.size())); // Right
 
-        if (points.size() > 1) {
-            // Point value calculation, temp.get(0) and temp.get(1) are the left and right paths respectively
+        if (results.time.size() > 1) {
+            // Point value calculation, res.get(0) and res.get(1) are the left and right paths respectively
             // Pi / 2 rad = 90 degrees
             // leftX = trackWidth / 2 * cos(calculatedAngleAtThatIndex + Pi / 2) + centerPathXValueAtThatIndex
             // leftY = trackWidth / 2 * sin(calculatedAngleAtThatIndex + Pi / 2) + centerPathYValueAtThatIndex
             // rightX = trackWidth / 2 * cos(calculatedAngleAtThatIndex - Pi / 2) + centerPathXValueAtThatIndex
             // rightY = trackWidth / 2 * sin(calculatedAngleAtThatIndex - Pi / 2) + centerPathYValueAtThatIndex
-            for (int i = 0; i < points.size(); i++) {
-                Waypoint point = points.get(i);
+            for (int i = 0; i < results.time.size(); i++) {
+                Waypoint point = new Waypoint(results.x.get(i), results.y.get(i), results.rad.get(i), results.vel.get(i),
+                        results.acc.get(i));
                 Waypoint leftPoint = new Waypoint(robotTrkWidth / 2 * Math.cos(point.getRad() + Math.PI / 2) + point.getX(),
                         robotTrkWidth / 2 * Math.sin(point.getRad() + Math.PI / 2) + point.getY(), point);
                 Waypoint rightPoint = new Waypoint(robotTrkWidth / 2 * Math.cos(point.getRad() - Math.PI / 2) + point.getX(),
                         robotTrkWidth / 2 * Math.sin(point.getRad() - Math.PI / 2) + point.getY(), point);
 
                 // Calculate left and right velocities
-                double omega = point.getV() / this.results.roc.get(i);
+                leftPoint.setV(point.getV() - results.omega.get(i) * robotTrkWidth / 2.0);
+                rightPoint.setV(point.getV() + results.omega.get(i) * robotTrkWidth / 2.0);
 
-                leftPoint.setV(point.getV() - omega * robotTrkWidth / 2.0);
-                rightPoint.setV(point.getV() + omega * robotTrkWidth / 2.0);
-
-                temp.get(0).add(i, leftPoint);
-                temp.get(1).add(i, rightPoint);
+                res.get(0).add(i, leftPoint);
+                res.get(1).add(i, rightPoint);
             }
-        } else if (points.size() == 1) {
-            temp.get(0).add(0, new Waypoint(points.get(0)));
+        } else if (results.time.size() == 1) {
+            res.get(0).add(0, new Waypoint(results.x.get(0), results.y.get(0), results.rad.get(0), results.vel.get(0), results.acc.get(0)));
         }
 
-        return temp;
+        return res;
     }
 }
