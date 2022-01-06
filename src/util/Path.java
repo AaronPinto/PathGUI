@@ -1,11 +1,13 @@
 package util;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
  * A path stores the points of a path, the waypoints used to create that path, and the left and right path points as well.
  */
 public final class Path implements Serializable {
+    @Serial
     private static final long serialVersionUID = 1L;
 
     public BetterArrayList<Waypoint> pathPoints, clickPoints, leftPoints, rightPoints;

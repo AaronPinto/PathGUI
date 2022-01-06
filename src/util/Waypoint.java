@@ -1,8 +1,10 @@
 package util;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 public final class Waypoint implements Serializable {
+    @Serial
     private static final long serialVersionUID = 1L;
 
     private double x;
@@ -45,9 +47,7 @@ public final class Waypoint implements Serializable {
 
     @Override
     public boolean equals(Object p) {
-        if (p instanceof Waypoint) {
-            Waypoint temp = (Waypoint) p;
-
+        if (p instanceof Waypoint temp) {
             return this.x == temp.x && this.y == temp.y;
         }
 

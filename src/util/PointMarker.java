@@ -1,14 +1,7 @@
 package util;
 
-public final class PointMarker {
+public record PointMarker(String pathName, int pointIndex) {
     public static final PointMarker DEFAULT = new PointMarker("", -1);
-    private final String pathName;
-    private final int pointIndex;
-
-    public PointMarker(String pathName, int pointIndex) {
-        this.pathName = pathName;
-        this.pointIndex = pointIndex;
-    }
 
     public String getPathName() {
         return pathName;
